@@ -10,8 +10,7 @@ int main(int argc, char *argv[])
     int num1 = -1, num2 = -1, num3 = -1, num4 = -1, num5 = -1;
     
     // create window for expression
-    //rmacxx::Window<int, EXPR> win({10});
-    rmacxx::Window<int, EXPR, LOCAL_FLUSH> win({10});
+    rmacxx::Window<int, LOCAL_VIEW, EXPR, LOCAL_FLUSH> win({10});
     
     if (win.size() == 1)
     {

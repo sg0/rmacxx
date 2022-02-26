@@ -10,8 +10,7 @@ int main(int argc, char *argv[])
     int num = -1;
     
     // create window for expression
-    rmacxx::Window<int, EXPR> win({10});
-    //rmacxx::Window<int, EXPR, LOCAL_FLUSH> win({10});
+    rmacxx::Window<int, LOCAL_VIEW, EXPR> win({10});
     
     if (win.size() == 1)
     {

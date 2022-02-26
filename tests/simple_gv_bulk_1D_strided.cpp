@@ -53,11 +53,7 @@ int main(int argc, char *argv[])
     for(int i = 0; i < 20; i++)
         data[i] = 3;
 
-    MPI_Datatype vect1d_t;
-    MPI_Type_vector(3, 4, 4, MPI_INT, &vect1d_t);
-    MPI_Type_commit(&vect1d_t);
-
-    rmacxx::RMACXX_Local_t<int> rmx_vt(vect1d_t);
+    rmacxx::RMACXX_Subarray_t<int, GLOBAL_VIEW> rmx_vt({1}, {4});
 
     win({3},{13}) << rmx_vt(data.data());
     
@@ -67,8 +63,6 @@ int main(int argc, char *argv[])
 
     win.barrier();
    
-    MPI_Type_free(&vect1d_t);
-
     win.wfree();
 
     MPI_Finalize();

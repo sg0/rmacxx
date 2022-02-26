@@ -6,9 +6,7 @@ int main(int argc, char *argv[])
 
     MPI_Init( &argc, &argv );
 
-    rmacxx::Window<double, EXPR> win({10});
-    //rmacxx::Window<double, EXPR, LOCAL_FLUSH> win({10});
-    //rmacxx::Window<double, EXPR, REMOTE_FLUSH> win({10});
+    rmacxx::Window<double, LOCAL_VIEW, EXPR> win({10});
 
     if (win.size() == 1)
     {

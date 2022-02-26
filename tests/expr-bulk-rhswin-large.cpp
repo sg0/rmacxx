@@ -13,7 +13,7 @@ int main(int argc, char *argv[])
     // flush, because remote completion to 
     // window is not guaranteed
     //rmacxx::Window<double,EXPR,LOCAL_FLUSH> win({1000,1000});
-    rmacxx::Window<double,EXPR> win({1000,1000});
+    rmacxx::Window<double,LOCAL_VIEW,EXPR> win({1000,1000});
 
     if (win.size() == 1)
     {

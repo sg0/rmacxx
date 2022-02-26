@@ -6,7 +6,7 @@ int main(int argc, char *argv[])
 
     MPI_Init( &argc, &argv );
 
-    rmacxx::Window<int, EXPR, LOCAL_FLUSH> win({10});
+    rmacxx::Window<int, LOCAL_VIEW, EXPR, LOCAL_FLUSH> win({10});
 
     if (win.size() == 1)
     {
@@ -27,8 +27,6 @@ int main(int argc, char *argv[])
     2*win(1,{2}) + 3*win(1,{3}) >> win(1,{8});
     win(1,{2}) + 2*win(1,{0}) + 5*win(1,{3}) >> win(1,{9});
 
-    //win.flush();
-
     // check results
     win(0,{5}) >> num1;
     win(0,{6}) >> num2;
@@ -36,15 +34,11 @@ int main(int argc, char *argv[])
     win(1,{8}) >> num4;
     win(1,{9}) >> num5;
     
-    //win.flush();
-   
-    /*
     assert(num1 == 6);
     assert(num2 == 2);
     assert(num3 == 4);
     assert(num4 == 5);
     assert(num5 == 8);
-    */
 
     if (win.rank() == 0)
     {

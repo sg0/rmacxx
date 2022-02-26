@@ -65,7 +65,7 @@ void put(FILE * output, int max_iters, MPI_Comm comm, rmacxx::Window<char,GLOBAL
     
     MPI_Type_commit(&udtype);
 #else
-    rmacxx::RMACXX_Subarray_t<char,GLOBAL_VIEW> foo( {0}, {1}, {1} );
+    rmacxx::RMACXX_Subarray_t<char,GLOBAL_VIEW> foo( {0}, {1});
 #endif
 
     MPI_Barrier(comm);

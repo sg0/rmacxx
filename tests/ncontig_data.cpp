@@ -65,13 +65,9 @@ void nc_put(FILE * output, int max_iters, MPI_Comm comm, rmacxx::Window<char>& w
 
     double t0, t1, dt, avg;
     
-    MPI_Datatype new_type;
-    MPI_Type_vector(1, 1, 0, MPI_CHAR, &new_type);
-    MPI_Type_commit(&new_type);
-
 #ifdef USE_MPI_RMA
 #else
-    rmacxx::RMACXX_Local_t<char> rmxnc(new_type);
+    rmacxx::RMACXX_Subarray_t<char> rmxnc({0},{0},{1});
 #endif
 
     for (int i = 0; i < WARMUP_NITERS; i++) 
@@ -80,7 +76,7 @@ void nc_put(FILE * output, int max_iters, MPI_Comm comm, rmacxx::Window<char>& w
 	    MPI_Put(&localval, 1, new_type, target, 0, 1, MPI_CHAR, win);
 #else
             
-	    win(target, {0}, {0}) << rmxnc(&localval, {0}, {0});
+	    win(target, {0}, {0}) << rmxnc(&localval);
 #endif
     }
 
@@ -99,7 +95,7 @@ void nc_put(FILE * output, int max_iters, MPI_Comm comm, rmacxx::Window<char>& w
 #ifdef USE_MPI_RMA
 	    MPI_Put(&localval, 1, new_type, target, 0, 1, MPI_CHAR, win);
 #else
-	    win(target, {0}, {0}) << rmxnc(&localval, {0}, {0});
+	    win(target, {0}, {0}) << rmxnc(&localval);
 #endif
     }
 
@@ -120,8 +116,6 @@ void nc_put(FILE * output, int max_iters, MPI_Comm comm, rmacxx::Window<char>& w
 #endif
 #endif
     
-    MPI_Type_free(&new_type);
-
     MPI_Reduce(&dt, &avg, 1, MPI_DOUBLE, MPI_SUM, 0, comm);    
     avg /= comm_size;
 

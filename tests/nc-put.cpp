@@ -24,25 +24,14 @@ int main(int argc, char *argv[])
     std::vector<int> a(10); 
     int *abuf = a.data();
     
-    // create data type
-    MPI_Datatype strided_t;
-    // count blocks each consisting of blocklen copies of oldtype
-    // separated by stride (number of elements between start of
-    // each block).
-    // this is essentially type_contiguous
-    MPI_Type_vector(2/*count*/, 5/*blen*/, 5/*stride*/, MPI_INT, &strided_t);
-    MPI_Type_commit(&strided_t);
-
-    rmacxx::RMACXX_Local_t<int> foo(strided_t);
+    // create subarray type
+    rmacxx::RMACXX_Subarray_t<int> foo({1},{2},{10});
     
     // put
     win(1,{0},{9}) << foo(abuf);
 
     win.flush(1);
     
-    win.print("After PUT...");
-
-    MPI_Type_free(&strided_t);
     win.wfree();
 
     MPI_Finalize();

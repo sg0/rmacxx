@@ -3,7 +3,7 @@
 
 #include "rmacxx.hpp"
 
-void static_win_rma3(FILE * output, MPI_Comm comm, int max_mem, rmacxx::Lwindow<double>& win)
+void static_win_rma3(FILE * output, MPI_Comm comm, int max_mem, rmacxx::Window<double>& win)
 {
     int comm_rank = -1, world_rank = -1, comm_size = 0;
     int maxcount = max_mem/sizeof(double);
@@ -202,7 +202,7 @@ int main(int argc, char * argv[])
     // create a window of doubles with non-blocking ops
     // of size maxcount on comm
     int maxcount = (int)(max_mem/sizeof(double));
-    rmacxx::Lwindow<double> win({maxcount}, comm);
+    rmacxx::Window<double> win({maxcount}, comm);
 
     // if window is declared inside static_win_rma3, hence
     // when it goes out of scope, the dtor of window is

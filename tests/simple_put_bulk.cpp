@@ -23,7 +23,7 @@
 #ifdef USE_MPI_RMA
 void put1(FILE * output, int max_iters, MPI_Comm comm, MPI_Win win)
 #else
-void put1(FILE * output, int max_iters, MPI_Comm comm, rmacxx::Lwindow<char>& win)
+void put1(FILE * output, int max_iters, MPI_Comm comm, rmacxx::Window<char>& win)
 #endif
 {
     int comm_rank = -1, world_rank = -1, comm_size = 0;
@@ -147,7 +147,7 @@ int main(int argc, char * argv[])
     MPI_Win_allocate(sizeof(char), sizeof(char), MPI_INFO_NULL, MPI_COMM_WORLD, &base, &win);
     MPI_Win_lock_all(MPI_MODE_NOCHECK, win);
 #else
-    rmacxx::Lwindow<char> win({sizeof(char)});
+    rmacxx::Window<char> win({sizeof(char)});
 #endif
 
     // if window is declared inside static_win_rma3, hence

@@ -12,8 +12,7 @@ int main(int argc, char *argv[])
     // in this case, user still needs to invoke
     // flush, because remote completion to 
     // window is not guaranteed
-    rmacxx::Window<double,EXPR,LOCAL_FLUSH> win({1000,1000});
-    //rmacxx::Window<double,EXPR> win({1000,1000});
+    rmacxx::Window<double,LOCAL_VIEW,EXPR,LOCAL_FLUSH> win({1000,1000});
 
     if (win.size() == 1)
     {

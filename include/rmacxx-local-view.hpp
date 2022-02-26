@@ -979,8 +979,8 @@ public:
         lock();
         
         target_ = target;
-        fop_inp_ = &inpval;
-        cas_inp_ = &cmpval;
+        fop_inp_ = const_cast<T*>(&inpval);
+        cas_inp_ = const_cast<T*>(&cmpval);
         is_cas_ = true;
 
         if ( ndims_ > 1 )
