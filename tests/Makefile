@@ -1,30 +1,31 @@
-SRCS       := $(wildcard *.cpp)
+SRCS       := $(wildcard **.cpp)
 PRGS       := $(patsubst %.cpp,%,$(SRCS))
-PRG_SUFFIX  =.exe
+PRG_SUFFIX  =.test
+OBJ_SUFFIX  =.o
 BINS       := $(patsubst %,%$(PRG_SUFFIX),$(PRGS))
-OBJS       := $(patsubst %,%.o,$(PRGS))
-# TEST_OVERHEAD will use MPI_PROC_NULL (no communication)
-CXXFLAGS = -O3 -Wall -std=c++11 -pthread -I../src -D_GNU_SOURCE -DTEST_OVERHEAD
+OBJS       := $(patsubst %,%$(OBJ_SUFFIX),$(PRGS))
+
+CXXFLAGS = -O3 -Wall -std=c++14 -pthread -I../include -D_GNU_SOURCE -DTEST_OVERHEAD
 LDFLAGS  =
-MPICXX 	 =  mpicxx
+MPICXX 	 =  mpic++
 RUNCMD 	 =  mpiexec
 NPROCS	 = 2
 CXX      = $(MPICXX)
 
-.PHONY: all clean run
+.PHONY: build check run_tests
 
-all : $(BINS)
+build: $(OBJS)
 
-OBJ = $(patsubst %$(PRG_SUFFIX),%.o,$@)
 BIN = $@
 
-%$(PRG_SUFFIX) : $(OBJS)
-	$(MPICXX) $(CXXFLAGS) $(OBJ) -o $(BIN) $(LDFLAGS)
+%$(PRG_SUFFIX): %$(OBJ_SUFFIX)
+	echo "::group::$(BIN)"
+	($(MPICXX) $(CXXFLAGS) $(OBJ) -o $(BIN) $(LDFLAGS)||(echo "::endgroup::"; exit 2));
+	($(RUNCMD) -np $(NPROCS) ./$(BIN)||(echo "::endgroup::";exit 2));
+	echo "::endgroup::"
 
-run :
-	for bin in $(BINS); do \
-		$(RUNCMD) -np $(NPROCS) ./$$bin; \
-	done
+
+check: $(OBJS) $(BINS) clean
 
 clean:
-	$(RM) $(BINS) $(OBJS)
+	$(RM) **$(PRG_SUFFIX) **$(OBJ_SUFFIX)
