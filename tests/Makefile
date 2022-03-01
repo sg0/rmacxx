@@ -20,7 +20,7 @@ BIN = $@
 
 %$(PRG_SUFFIX): %$(OBJ_SUFFIX)
 	echo "::group::$(BIN)"
-	($(MPICXX) $(CXXFLAGS) $(OBJ) -o $(BIN) $(LDFLAGS)||(echo "::endgroup::"; exit 2));
+	($(MPICXX) $(CXXFLAGS) $^ -o $(BIN) $(LDFLAGS)||(echo "::endgroup::"; exit 2));
 	($(RUNCMD) -np $(NPROCS) ./$(BIN)||(echo "::endgroup::";exit 2));
 	echo "::endgroup::"
 
