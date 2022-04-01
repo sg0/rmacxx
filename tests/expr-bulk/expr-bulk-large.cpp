@@ -12,7 +12,7 @@ int main(int argc, char *argv[])
     // in this case, user still needs to invoke
     // flush, because remote completion to 
     // window is not guaranteed
-    rmacxx::Window<double,LOCAL_VIEW,EXPR,LOCAL_FLUSH> win({1000,1000});
+    rmacxx::Window<double,LOCAL_VIEW,EXPR> win({1000,1000}), w2({50,50});
 
     if (win.size() == 1)
     {
@@ -23,23 +23,31 @@ int main(int argc, char *argv[])
     // fill window buffer
     win.fill(1);
 
-    std::vector<double> chunk1, chunk2, chunk3, chunk4;
+    std::vector<double> chunk1, chunk2, chunk3, chunk4, chunk5, chunk6;
     chunk1.resize(50*50);
     chunk2.resize(50*50);
     chunk3.resize(50*50);
     chunk4.resize(50*50);
+    chunk5.resize(50*50);
+    chunk6.resize(50*50);
     double* data1 = chunk1.data();
     double* data2 = chunk2.data();
     double* data3 = chunk3.data();
     double* data4 = chunk4.data();
+    double* data5 = chunk5.data();
+    double* data6 = chunk6.data();   
     
     win(1,{0,0},{50,50})*win(0,{0,0},{50,50}) + (2+win(1,{0,0},{50,50})) + (3+win(1,{0,0},{50,50}))     >> data1;
     win(0,{0,0},{50,50})*win(1,{0,0},{50,50}) + 4*win(1,{0,0},{50,50}) + 5*win(1,{0,0},{50,50})         >> data2;
     win(1,{0,0},{50,50})*win(0,{0,0},{50,50}) + 2*(win(1,{0,0},{50,50})*win(1,{0,0},{50,50}))           >> data3;
     4*win(1,{0,0},{50,50})*win(1,{0,0},{50,50}) + 2*win(0,{0,0},{50,50}) + (5+win(0,{0,0},{50,50}))     >> data4;
+    
+    w2(1,{0,0},{5,5})*w2(1,{0,0},{5,5}) + 2*w2(0,{0,0},{5,5}) + (5+w2(0,{0,0},{5,5}))     >> data5;
+    4*w2(1,{0,0},{5,5})*win(1,{0,0},{5,5}) + 2*win(0,{0,0},{5,5}) + (5+w2(0,{0,0},{5,5}))     >> data6;
    
     // flush to complete expression
-    //win.flush();
+    win.flush();
+    w2.flush();
 
     if (win.rank() == 0)
     {
