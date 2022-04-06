@@ -50,6 +50,9 @@ public:
 
     inline static void flush()
     {
+#ifdef DEBUG
+        std::cout<<"|DEBUG| [rmacxx-expr-bulk.hpp: flush: 54]"<<std::endl;
+#endif
         if ( !Handles<T>::instance().bexpr_handles_.empty() )
         {
             for ( unsigned int i = 0; i < Handles<T>::instance().bexpr_handles_.size(); i++ )
@@ -116,6 +119,9 @@ public:
     // user managed buffer in the RHS
     inline void operator >>( T* buf )
     {
+#ifdef DEBUG
+        std::cout<<"|DEBUG| [rmacxx-expr-bulk.hpp: operator >>: 123]"<<std::endl;
+#endif
         // post outstanding gets
         bexpr_outstanding_gets();
 
@@ -155,6 +161,9 @@ public:
     template <class W>
     void operator >>( BExpr<T,W> const& win )
     {
+#ifdef DEBUG
+        std::cout<<"|DEBUG| [rmacxx-expr-bulk.hpp: operator >>: 165]"<<std::endl;
+#endif
         bool is_placed = true;
 
         // ignore previous get
@@ -282,6 +291,9 @@ public:
 
     int fillInto( T* buf ) const
     {
+#ifdef DEBUG
+        std::cout<<"|DEBUG| [rmacxx-expr-bulk.hpp: fillInto: 295]"<<std::endl;
+#endif
         int count = u_.fillInto( buf );
 
         for ( int i = 0; i < count; i++ )
@@ -330,6 +342,9 @@ public:
     
     int fillInto( T* buf ) const
     {
+#ifdef DEBUG
+        std::cout<<"|DEBUG| [rmacxx-expr-bulk.hpp: fillInto: 346]"<<std::endl;
+#endif
         T* cache = nullptr;
         const int count = v_.fillInto( buf );
 

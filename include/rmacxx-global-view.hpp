@@ -342,6 +342,9 @@ public:
     // return a pointer to the window buffer
     inline T* wget() const
     {
+#ifdef DEBUG
+        std::cout<<"|DEBUG| [rmacxx-global-view.hpp: wget: 346]"<<std::endl;
+#endif
         int flag = 0;
         T* wbaseptr = nullptr;
         MPI_Win_get_attr( win_, MPI_WIN_BASE, &wbaseptr, &flag );
@@ -351,6 +354,9 @@ public:
     // fill value in the buffer attached to the window
     inline void fill( T val ) const
     {
+#ifdef DEBUG
+        std::cout<<"|DEBUG| [rmacxx-global-view.hpp: fill: 358]"<<std::endl;
+#endif
         T* localBuf = wget();
 
         for ( int i = 0; i < nelems_; i++ )
@@ -366,6 +372,9 @@ public:
     // NGA_Access
     void access( int lo[], int hi[], T** ptr, int ld[] )
     {
+#ifdef DEBUG
+        std::cout<<"|DEBUG| [rmacxx-global-view.hpp: access: 376]"<<std::endl;
+#endif
         T* base = wget();
 
         if ( ndims_ > 1 )
@@ -397,6 +406,9 @@ public:
     // correct symm = 0.5*(A + A')
     void symmetrize()
     {
+#ifdef DEBUG
+        std::cout<<"|DEBUG| [rmacxx-global-view.hpp: symmetrize: 410]"<<std::endl;
+#endif
         T* localBuf = wget();
 
         for ( int i = 0; i < nelems_; i++ )
@@ -417,6 +429,9 @@ public:
     // copy window lo/hi ranges (1D)
     void wdim(int& lo, int& hi)
     { 
+#ifdef DEBUG
+        std::cout<<"|DEBUG| [rmacxx-global-view.hpp: wdim: 433]"<<std::endl;
+#endif
         lo = rlo_[commRank_]; 
         hi = rhi_[commRank_]; 
     }
@@ -424,6 +439,9 @@ public:
     // print data ranges per process
     void print_ranges() const
     {
+#ifdef DEBUG
+        std::cout<<"|DEBUG| [rmacxx-global-view.hpp: print_ranges: 443]"<<std::endl;
+#endif
         if ( commRank_ == 0 )
         {
             // PE grid info
@@ -479,6 +497,9 @@ public:
     // otherwise returns data as per flat 1d layout
     void print( std::string const& s ) const
     {
+#ifdef DEBUG
+        std::cout<<"|DEBUG| [rmacxx-global-view.hpp: print: 501]"<<std::endl;
+#endif
         MPI_Barrier( comm_ );
         T* buf = wget();
 
@@ -535,6 +556,9 @@ public:
     // takes control
     inline MPI_Win& wunlock()
     {
+#ifdef DEBUG
+        std::cout<<"|DEBUG| [rmacxx-global-view.hpp: wunlock: 560]"<<std::endl;
+#endif
         if ( iswinlocked_ )
         {
             MPI_Win_unlock_all( win_ );
@@ -549,6 +573,9 @@ public:
     // by default MPI_MODE_NOCHECK
     inline MPI_Win& wlock()
     {
+#ifdef DEBUG
+        std::cout<<"|DEBUG| [rmacxx-global-view.hpp: wlock: 577]"<<std::endl;
+#endif
         if ( !iswinlocked_ )
         {
             MPI_Win_lock_all( MPI_MODE_NOCHECK, win_ );
@@ -562,6 +589,9 @@ public:
     // default (remote | local) blocking
     inline bool is_win_b() const
     {
+#ifdef DEBUG
+        std::cout<<"|DEBUG| [rmacxx-global-view.hpp: is_win_b: 593]"<<std::endl;
+#endif
         if ( wcmpl_ == NO_FLUSH )
             return false;
 
@@ -573,6 +603,9 @@ public:
     // -----------------------------------------------------
     inline void find_target_disp( std::initializer_list<int> const& l )
     {
+#ifdef DEBUG
+        std::cout<<"|DEBUG| [rmacxx-global-view.hpp: find_target_disp: 607]"<<std::endl;
+#endif
         bool found = false;
 
         for ( int p = 0; p < commSize_; p++ )
@@ -634,6 +667,9 @@ public:
     // instead of init_list
     inline int find_target( std::vector<int> const& l )
     {
+#ifdef DEBUG
+        std::cout<<"|DEBUG| [rmacxx-global-view.hpp: find_target: 671]"<<std::endl;
+#endif
         bool found = false;
 
         for ( int p = 0; p < commSize_; p++ )
@@ -674,6 +710,9 @@ public:
     // update remote displacement and change name
     inline int find_target( int const& lo )
     {
+#ifdef DEBUG
+        std::cout<<"|DEBUG| [rmacxx-global-view.hpp: find_target: 714]"<<std::endl;
+#endif
         for ( int p = 0; p < commSize_; p++ )
         {
             if ( ( lo >= rlo_[p] ) && ( lo <= rhi_[p] ) )
@@ -705,6 +744,9 @@ public:
     // ctor which takes an init_list
     inline WIN& operator()( std::initializer_list<int> const& l,  std::initializer_list<int> const& h, X )
     {
+#ifdef DEBUG
+        std::cout<<"|DEBUG| [rmacxx-global-view.hpp: operator (): 748]"<<std::endl;
+#endif
         lock();
 
         if ( ndims_ > 1 )
@@ -737,6 +779,9 @@ public:
     // in this function
     inline WIN& operator()( std::initializer_list<int> const& l, X )
     {
+#ifdef DEBUG
+        std::cout<<"|DEBUG| [rmacxx-global-view.hpp: operator (): 783]"<<std::endl;
+#endif
         lock();
 
         // target_, disp_ will be computed
@@ -751,6 +796,9 @@ public:
     // object
     inline EExpr<T,RefEExpr<T,WIN>> operator()( std::initializer_list<int> const& l, Y )
     {
+#ifdef DEBUG
+        std::cout<<"|DEBUG| [rmacxx-global-view.hpp: operator (): 800]"<<std::endl;
+#endif
         lock();
         
         is_expr_elem_ = true;
@@ -774,6 +822,9 @@ public:
     // expression window access
     inline void eexpr_outstanding_gets() const
     {
+#ifdef DEBUG
+        std::cout<<"|DEBUG| [rmacxx-global-view.hpp: eexpr_outstanding_gets: 826]"<<std::endl;
+#endif
         lock();
 
         if ( expr_buf_counter_ < PREALLOC_BUF_SZ )
@@ -804,6 +855,9 @@ public:
     // for 1D cases involving expressions
     inline void resize_expr_info_1D_()
     {
+#ifdef DEBUG
+        std::cout<<"|DEBUG| [rmacxx-global-view.hpp: resize_expr_info_1D_: 859]"<<std::endl;
+#endif
         int new_sz = expr_issue_counter_ + ( 3*DEFAULT_EXPR_COUNT );
         int* new_expr_info_1D = new int[new_sz];
         memcpy( new_expr_info_1D, expr_info_1D_,
@@ -816,6 +870,9 @@ public:
     // bulk expression
     inline BExpr<T,RefBExpr<T,WIN>> operator()( std::initializer_list<int> const& l, std::initializer_list<int> const& h, Y )
     {
+#ifdef DEBUG
+        std::cout<<"|DEBUG| [rmacxx-global-view.hpp: operator (): 874]"<<std::endl;
+#endif
         lock();
 
         is_expr_bulk_ = true;
@@ -958,6 +1015,9 @@ public:
     // expression window access
     inline void bexpr_outstanding_gets() const
     {
+#ifdef DEBUG
+        std::cout<<"|DEBUG| [rmacxx-global-view.hpp: bexpr_outstanding_gets: 1019]"<<std::endl;
+#endif
         lock();
 
         for ( int k = 0; k < expr_bulk_get_counter_; k++ )
@@ -1147,6 +1207,9 @@ public:
     // put(s)
     inline void expr_ignore_last_get() const
     {
+#ifdef DEBUG
+        std::cout<<"|DEBUG| [rmacxx-global-view.hpp: expr_ignore_last_get: 1211]"<<std::endl;
+#endif
         lock();
 
         if ( ndims_ == 1 )
@@ -1207,6 +1270,9 @@ public:
     // user calls flush
     void eexpr_outstanding_put( const T val ) const
     {
+#ifdef DEBUG
+        std::cout<<"|DEBUG| [rmacxx-global-view.hpp: eexpr_outstanding_put: 1274]"<<std::endl;
+#endif
         lock();
 
         if ( watmc_ == ATOMIC_PUT_GET )
@@ -1230,6 +1296,9 @@ public:
     // bulk put for expression cases with window in the RHS
     void bexpr_outstanding_put( const T* origin_addr ) const
     {
+#ifdef DEBUG
+        std::cout<<"|DEBUG| [rmacxx-global-view.hpp: bexpr_outstanding_put: 1300]"<<std::endl;
+#endif
         lock();
 
         for ( int k = 0; k < expr_bulk_put_counter_; k++ )
@@ -1298,6 +1367,9 @@ public:
     // -------
     inline WIN& operator()( std::initializer_list<int> const& l, std::initializer_list<int> const& h, Op op )
     {
+#ifdef DEBUG
+        std::cout<<"|DEBUG| [rmacxx-global-view.hpp: operator (): 1371]"<<std::endl;
+#endif
         lock();
         winop_ = op;
 
@@ -1328,6 +1400,9 @@ public:
 
     inline WIN& operator()( std::initializer_list<int> const& l, Op op )
     {
+#ifdef DEBUG
+        std::cout<<"|DEBUG| [rmacxx-global-view.hpp: operator(): 1404]"<<std::endl;
+#endif
         lock();
         winop_ = op;
         
@@ -1342,6 +1417,9 @@ public:
     // ------------------
     inline WIN& operator()( std::initializer_list<int> const& l, std::initializer_list<int> const& h, Op op, T const* inpval )
     {
+#ifdef DEBUG
+        std::cout<<"|DEBUG| [rmacxx-global-view.hpp: operator (): 1421]"<<std::endl;
+#endif
         lock();
         winop_ = op;
 
@@ -1377,6 +1455,9 @@ public:
     // ----------------
     inline WIN& operator()( std::initializer_list<int> const& l, Op op, T inpval )
     {
+#ifdef DEBUG
+        std::cout<<"|DEBUG| [rmacxx-global-view.hpp: operator (): 1459]"<<std::endl;
+#endif
         lock();
         winop_ = op;
 
@@ -1394,6 +1475,9 @@ public:
     // --------------------
     inline WIN& operator()( std::initializer_list<int> const& l, const T inpval, const T cmpval )
     {
+#ifdef DEBUG
+        std::cout<<"|DEBUG| [rmacxx-global-view.hpp: operator (): 1479]"<<std::endl;
+#endif
         lock();
         is_cas_ = true;
         
@@ -1411,6 +1495,9 @@ public:
     // elementwise gets
     T eval() const
     {
+#ifdef DEBUG
+        std::cout<<"|DEBUG| [rmacxx-global-view.hpp: eval: 1499]"<<std::endl;
+#endif
         T val = T( 0 );
         lock();
         int& target = expr_info_1D_[expr_xfer1D_counter_];
@@ -1463,6 +1550,9 @@ public:
     // returns the count of elements processed in get
     int fillInto( T* buf ) const
     {
+#ifdef DEBUG
+        std::cout<<"|DEBUG| [rmacxx-global-view.hpp: fillInto: 1554]"<<std::endl;
+#endif
         int count = 0, total_count = 0;
         lock();
 
@@ -1611,6 +1701,9 @@ public:
     // -------------------------------------
     void operator <<( const T* origin_addr )
     {
+#ifdef DEBUG
+        std::cout<<"|DEBUG| [rmacxx-global-view.hpp: operator <<: 1705]"<<std::endl;
+#endif
         if ( winop_.op == MPI_OP_NULL )
             RMACXX_GLOBAL_CONTIG_BULK_XFER(origin_addr, RMACXX_BULK_PUT_GLOBAL);
         else
@@ -1633,6 +1726,9 @@ public:
     // ------------------------------------
     void operator >>( T* origin_addr )
     {
+#ifdef DEBUG
+        std::cout<<"|DEBUG| [rmacxx-global-view.hpp: operator >>: 1730]"<<std::endl;
+#endif
         if ( is_fop_ )
 	{
             RMACXX_GLOBAL_CONTIG_BULK_XFER(origin_addr, RMACXX_BULK_GACC_GLOBAL);
@@ -1663,6 +1759,9 @@ public:
     // ---------------------------------------------------
     void operator <<( RMACXX_Subarray_t<T, GLOBAL_VIEW> const& origin )
     {
+#ifdef DEBUG
+        std::cout<<"|DEBUG| [rmacxx-global-view.hpp: operator <<: 1763]"<<std::endl;
+#endif
         if ( winop_.op == MPI_OP_NULL )
             RMACXX_GLOBAL_BULK_XFER_NC(origin, RMACXX_BULK_PUT_GLOBAL);
         else
@@ -1684,6 +1783,9 @@ public:
     // --------------------------------------------------
     void operator >>( RMACXX_Subarray_t<T, GLOBAL_VIEW> const& origin )
     {
+#ifdef DEBUG
+        std::cout<<"|DEBUG| [rmacxx-global-view.hpp: operator >>: 1787]"<<std::endl;
+#endif
         if ( is_fop_ )
         {
             RMACXX_GLOBAL_BULK_XFER_NC(origin, RMACXX_BULK_GACC_GLOBAL);
@@ -1707,6 +1809,9 @@ public:
     // ---------------------------------------------
     void operator <<( const T val )
     {
+#ifdef DEBUG
+        std::cout<<"|DEBUG| [rmacxx-global-view.hpp: operator >>: 1813]"<<std::endl;
+#endif
         if ( winop_.op == MPI_OP_NULL )
             RMACXX_ELEM_PUT( val );
         else
@@ -1718,6 +1823,9 @@ public:
     // --------------------------------------------
     void operator >>( T& val )
     {
+#ifdef DEBUG
+        std::cout<<"|DEBUG| [rmacxx-global-view.hpp: operator >>: 1827]"<<std::endl;
+#endif
         if ( is_fop_ )
             RMACXX_FOP( val );
         else if ( is_cas_ )
@@ -1750,6 +1858,9 @@ public:
 
     inline void flush( X ) const
     {
+#ifdef DEBUG
+        std::cout<<"|DEBUG| [rmacxx-global-view.hpp: flush: 1862]"<<std::endl;
+#endif
 #ifdef TEST_OVERHEAD
 #else
         MPI_Win_flush_all( win_ );
@@ -1801,6 +1912,9 @@ public:
 
     inline void flush_local( Y ) const
     {
+#ifdef DEBUG
+        std::cout<<"|DEBUG| [rmacxx-global-view.hpp: flush_local: 1916]"<<std::endl;
+#endif
         if ( wcmpl_ == NO_FLUSH )
         {
             if ( is_expr_elem_ ) EExpr<T, WIN>::flush();
@@ -1956,6 +2070,9 @@ private:
 #ifdef RMACXX_USE_SPINLOCK
     void lock() const
     {
+#ifdef DEBUG
+        std::cout<<"|DEBUG| [rmacxx-global-view.hpp: lock: 2074]"<<std::endl;
+#endif
         if ( wtsft_ == CONCURRENT )
         {
             while ( locked.test_and_set( std::memory_order_acquire ) )
@@ -1964,6 +2081,9 @@ private:
     }
     void unlock() const
     {
+#ifdef DEBUG
+        std::cout<<"|DEBUG| [rmacxx-global-view.hpp: unlock: 2085]"<<std::endl;
+#endif
         if ( wtsft_ == CONCURRENT )
             locked.clear( std::memory_order_release );
     }
