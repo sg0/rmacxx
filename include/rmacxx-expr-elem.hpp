@@ -44,10 +44,10 @@ public:
     { v_.expr_ignore_last_get(); }
 
     inline static void flush()
+    {
 #ifdef DEBUG
         std::cout<<"|DEBUG| [rmacxx-expr-elem.hpp: flush: 48]"<<std::endl;
 #endif
-    {
         if ( !Handles<T>::instance().eexpr_handles_.empty() )
         {
             for ( unsigned int i = 0; i < Handles<T>::instance().eexpr_handles_.size(); i++ )
