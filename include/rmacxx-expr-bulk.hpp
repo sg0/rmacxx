@@ -119,9 +119,6 @@ public:
     // user managed buffer in the RHS
     inline void operator >>( T* buf )
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-expr-bulk.hpp: operator >>: 123]"<<std::endl;
-#endif
         // post outstanding gets
         bexpr_outstanding_gets();
 
@@ -161,9 +158,6 @@ public:
     template <class W>
     void operator >>( BExpr<T,W> const& win )
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-expr-bulk.hpp: operator >>: 165]"<<std::endl;
-#endif
         bool is_placed = true;
 
         // ignore previous get
@@ -237,7 +231,6 @@ public:
                 Handles<T>::instance().bexpr_handles_.emplace_back( buf );
 #else
                 Handles<T>::instance().eexpr_handles_.emplace_back( buf, is_placed );
-
 #endif
             }
 
@@ -260,7 +253,6 @@ public:
                 Handles<T>::instance().bexpr_handles_.
                 emplace_back( new ( mem ) BExpr<T,W>( win ), true );
             }
-
 #endif
         }
     }
@@ -296,9 +288,15 @@ public:
 #endif
         int count = u_.fillInto( buf );
 
-        for ( int i = 0; i < count; i++ )
+#ifdef DEBUG
+        std::cout<< "count: " << count <<std::endl;
+#endif
+        for ( int i = 0; i < count; i++ ){
             buf[i] = operator()( i );
-
+#ifdef DEBUG
+             std::cout<< "i: " << i << "\tbuf[i]: "<< buf[i] <<std::endl;
+#endif
+        }
         return count;
     }
 
@@ -360,9 +358,15 @@ public:
         // buffer, hence we need to get it
         u_.fillInto( cache );
 
-        for ( int i = 0; i < count; i++ )
+#ifdef DEBUG
+        std::cout<< "count: " << count <<std::endl;
+#endif
+        for ( int i = 0; i < count; i++ ){
             buf[i] = operator()( i );
-
+#ifdef DEBUG
+             std::cout<< "i: " << i << "\tbuf[i]: "<< buf[i] <<std::endl;
+#endif
+        }
         if ( mem == nullptr )
             delete []cache;
         else

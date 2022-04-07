@@ -108,7 +108,6 @@ struct RMACXX_Subarray_t<T, LOCAL_VIEW>
 // for global view, as depending on the shape
 // of the target patch, the origin subsizes
 // will change.
-
 template <typename T> 
 struct RMACXX_Subarray_t<T, GLOBAL_VIEW>
 {

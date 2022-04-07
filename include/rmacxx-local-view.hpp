@@ -1,4 +1,3 @@
-
 // TODO FIXME finish coding RMACXX_USE_MPI_AINT_FOR_COORD.
 // This is for cases when input coordinates are greater
 // than INT range.
@@ -327,9 +326,6 @@ public:
     // EXPR windows with standard ones
     inline WIN& operator()( int target, std::initializer_list<int> const& lo, std::initializer_list<int> const&  hi, X )
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-local-view.hpp: operator(): 331]"<<std::endl;
-#endif
         lock();
         target_ = target;
 
@@ -359,9 +355,6 @@ public:
 
     inline WIN& operator()( int target, std::initializer_list<int> const& lo, X )
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-local-view.hpp: operator(): 363]"<<std::endl;
-#endif
         lock();
         target_ = target;
 
@@ -387,9 +380,6 @@ public:
     // for all cases? if yes, also handle expression cases 
     inline WIN& operator()( int target, std::initializer_list<int64_t> const& lo, std::initializer_list<int64_t> const&  hi, X )
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-local-view.hpp: operator(): 391]"<<std::endl;
-#endif
         lock();
         target_ = target;
 
@@ -419,9 +409,6 @@ public:
 
     inline WIN& operator()( int target, std::initializer_list<int64_t> const& lo, X )
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-local-view.hpp: operator(): 423]"<<std::endl;
-#endif
         lock();
         target_ = target;
 
@@ -449,9 +436,6 @@ public:
     // object
     EExpr<T,RefEExpr<T,WIN>> operator()( int target, std::initializer_list<int> const& lo, Y )
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-local-view.hpp: operator(): 453]"<<std::endl;
-#endif
         lock();
         
         is_expr_elem_ = true;
@@ -536,9 +520,6 @@ public:
 
     BExpr<T,RefBExpr<T,WIN>> operator()( int target, std::initializer_list<int> const& lo, std::initializer_list<int> const& hi, Y )
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-local-view.hpp: operator(): 540]"<<std::endl;
-#endif
         lock();
 
         is_expr_bulk_ = true;
@@ -878,9 +859,6 @@ public:
     // -------
     inline WIN& operator()( int target, std::initializer_list<int> const& lo, std::initializer_list<int> const& hi, Op op )
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-local-view.hpp: operator(): 882]"<<std::endl;
-#endif
         lock();
         
         target_ = target;
@@ -914,12 +892,8 @@ public:
     // wrap the input std::init_list into Lo/Hi classes like before
     // that can accept either int or int64_t in compile time, to
     // avoid such duplication of code
-    
     inline WIN& operator()( int target, std::initializer_list<int> const& lo, Op op )
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-local-view.hpp: operator(): 921]"<<std::endl;
-#endif
         lock();
         
         target_ = target;
@@ -945,9 +919,6 @@ public:
  
     inline WIN& operator()( int target, std::initializer_list<int64_t> const& lo, Op op )
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-local-view.hpp: operator(): 949]"<<std::endl;
-#endif
         lock();
         
         target_ = target;
@@ -975,9 +946,6 @@ public:
     // ------------------
     inline WIN& operator()( int target, std::initializer_list<int> const& lo, std::initializer_list<int> const& hi, Op op, T const* inpval )
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-local-view.hpp: operator(): 979]"<<std::endl;
-#endif
         lock();
         
         target_ = target;
@@ -1013,9 +981,6 @@ public:
     // ----------------
     inline WIN& operator()( int target, std::initializer_list<int> const& lo, Op op, T inpval )
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-local-view.hpp: operator(): 1017]"<<std::endl;
-#endif
         lock();
         
         target_ = target;
@@ -1045,9 +1010,6 @@ public:
     // --------------------
     inline WIN& operator()( int target, std::initializer_list<int> const& lo, const T inpval, const T cmpval )
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-local-view.hpp: operator(): 1049]"<<std::endl;
-#endif
         lock();
         
         target_ = target;
@@ -1085,7 +1047,7 @@ public:
         lock();
         
         int& target = expr_info_1D_[expr_xfer1D_counter_];
-
+        
         if ( expr_size_counter_ < PREALLOC_BUF_SZ )
         {
             flush_local( target );
@@ -1112,10 +1074,14 @@ public:
         }
 
         expr_size_counter_++;
-        expr_xfer1D_counter_ += 3;
-        
+        expr_xfer1D_counter_ += 3;  
+#ifdef DEBUG
+        std::cout<<"expr_size_counter: "<< expr_size_counter_ << "\texpr_xfer1d_counter_: " << expr_xfer1D_counter_ <<std::endl;
+#endif        
         unlock();
-        
+#ifdef DEBUG
+        std::cout<<"val: "<< val <<std::endl;
+#endif
         return val;
     }
 
@@ -1132,13 +1098,17 @@ public:
         int count = 0;
         
         lock();
-
+#ifdef DEBUG
+        std::cout<<"ndims_: "<< ndims_ <<std::endl;
+#endif
         if ( ndims_ > 1 )
         {
             // check if preallocated buffer was used in a previously
             // issued get
             count = defer_xfer_nD_[expr_xferND_counter_].count_;
-
+#ifdef DEBUG
+            std::cout<<"count: "<< count <<std::endl;
+#endif
             if ( expr_size_counter_ == 0 && ( ( expr_size_counter_ + count ) < PREALLOC_BUF_SZ ) )
             {
                 // flush on MPI_PROC_NULL throws an error, so trying to prevent it
@@ -1186,7 +1156,9 @@ public:
             // check if preallocated buffer was used in a previously
             // issued get
             count = expr_info_1D_[expr_xfer1D_counter_+1];
-
+#ifdef DEBUG
+            std::cout<<"count: "<< count <<std::endl;
+#endif
             if ( expr_size_counter_ == 0 && ( ( expr_size_counter_ + count ) < PREALLOC_BUF_SZ ) )
             {
                 flush_local( expr_info_1D_[expr_xfer1D_counter_] );
@@ -1226,6 +1198,9 @@ public:
 
         expr_bptr_ = buf;
         
+#ifdef DEBUG
+        std::cout<<"expr_bptr_: "<< expr_bptr_ <<std::endl;
+#endif
         unlock();
         
         return count;
@@ -1241,9 +1216,6 @@ public:
     // to that point
     void flush_expr() const
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-local-view.hpp: flush_expr(): 1245]"<<std::endl;
-#endif
         defer_xfer_nD_.clear();
         defer_put_xfer_nD_.clear();
         defer_put_xfer_1D_.clear();
@@ -1267,9 +1239,6 @@ public:
     // -------------------------------------
     void operator <<( const T* origin_addr )
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-local-view.hpp: operator <<: 1271]"<<std::endl;
-#endif
         if ( winop_.op == MPI_OP_NULL )
             RMACXX_BULK_PUT( origin_addr );
         else
@@ -1280,9 +1249,6 @@ public:
     // ------------------------------------
     void operator >>( T* origin_addr )
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-local-view.hpp: operator >>: 1284]"<<std::endl;
-#endif
         if ( is_fop_ )
             RMACXX_BULK_GACC( origin_addr );
         else
@@ -1301,9 +1267,6 @@ public:
     // ---------------------------------------------------
     void operator <<( RMACXX_Subarray_t<T, LOCAL_VIEW>& origin )
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-local-view.hpp: operator <<: 1305]"<<std::endl;
-#endif
         if ( winop_.op == MPI_OP_NULL )
             RMACXX_BULK_PUT_NC( origin );
         else
@@ -1319,9 +1282,6 @@ public:
     // --------------------------------------------------
     void operator >>( RMACXX_Subarray_t<T, LOCAL_VIEW>& origin )
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-local-view.hpp: operator >>: 1323]"<<std::endl;
-#endif
         if ( is_fop_ )
             RMACXX_BULK_GACC_NC( origin );
         else
@@ -1332,9 +1292,6 @@ public:
     // ---------------------------------------------
     void operator <<( const T val )
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-local-view.hpp: operator <<: 1336]"<<std::endl;
-#endif
         if ( winop_.op == MPI_OP_NULL )
             RMACXX_ELEM_PUT( val );
         else
@@ -1346,9 +1303,6 @@ public:
     // --------------------------------------------
     void operator >>( T& val )
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-local-view.hpp: operator >>: 11350]"<<std::endl;
-#endif
         if ( is_fop_ )
 #ifdef RMACXX_USE_MPI_FOP_TO_IMPL_FOP
             RMACXX_FOP_ALT( val );
@@ -1364,9 +1318,6 @@ public:
     // synchronization
     inline void flush_local( int const& target ) const
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-local-view.hpp: flush_local: 1368]"<<std::endl;
-#endif
 #ifdef TEST_OVERHEAD
 #else
         MPI_Win_flush_local( target, win_ );
@@ -1374,9 +1325,6 @@ public:
     }
     inline void flush( int const& target ) const
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-local-view.hpp: flush: 1378]"<<std::endl;
-#endif
 #ifdef TEST_OVERHEAD
 #else
         MPI_Win_flush( target, win_ );
@@ -1391,9 +1339,6 @@ public:
 
     inline void flush( X ) const
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-local-view.hpp: flush: 1395]"<<std::endl;
-#endif
 #ifdef TEST_OVERHEAD
 #else
         MPI_Win_flush_all( win_ );
@@ -1401,9 +1346,6 @@ public:
     }
     inline void flush_local( X ) const
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-local-view.hpp: flush_local: 1405]"<<std::endl;
-#endif
 #ifdef TEST_OVERHEAD
 #else
         MPI_Win_flush_local_all( win_ );
@@ -1415,9 +1357,6 @@ public:
     // (LOCAL|NO)_FLUSH...
     inline void flush( Y ) const
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-local-view.hpp: flush: 1419]"<<std::endl;
-#endif
         // cases with LOCAL_FLUSH and buffer in RHS will
         // encounter some extra work, but the user must not
         // have invoked flush in that case anyway
@@ -1436,9 +1375,6 @@ public:
     // from the expression classes
     inline void flush_win() const
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-local-view.hpp: flush_win: 1440]"<<std::endl;
-#endif
 #ifdef TEST_OVERHEAD
 #else
         MPI_Win_flush_all( win_ );
@@ -1454,9 +1390,6 @@ public:
 
     inline void flush_local( Y ) const
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-local-view.hpp: flush_local: 1458]"<<std::endl;
-#endif
         if ( wcmpl_ == NO_FLUSH )
         {
             if ( is_expr_elem_ ) EExpr<T, WIN>::flush();

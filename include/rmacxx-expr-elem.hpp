@@ -111,9 +111,6 @@ public:
     // >> triggers the evaluation
     inline void operator >>( T& d )
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-expr-elem.hpp: operator >>: 115]"<<std::endl;
-#endif
         // post gets
         eexpr_outstanding_gets();
 
@@ -148,9 +145,6 @@ public:
     template <class W>
     void operator >>( EExpr<T,W> const& win )
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-expr-elem.hpp: operator >>: 152]"<<std::endl;
-#endif
         bool is_placed = true;
 
         // ignore previous get
@@ -329,9 +323,6 @@ template <typename T, class A, class B>
 EExpr <T, EExprWinElemOp <T, EExpr<T,A>, EExpr<T,B>, Add<T>>>
 operator+( EExpr<T,A> a, EExpr<T,B> b )
 {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-expr-elem.hpp: operator +: 333]"<<std::endl;
-#endif
     typedef EExprWinElemOp <T, EExpr<T,A>, EExpr<T,B>, Add<T>> ExprT;
     return EExpr <T, ExprT>( ExprT( a,b ) );
 }
@@ -340,9 +331,9 @@ template <typename T, class A, class B>
 EExpr <T, EExprWinElemOp<T, EExpr<T,A>, EExpr<T,B>, Mul<T>>>
 operator *( EExpr<T,A> a, EExpr<T,B> b )
 {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-expr-elem.hpp: operator *: 344]"<<std::endl;
-#endif
+// #ifdef DEBUG
+//         std::cout<<"|DEBUG| [rmacxx-expr-elem.hpp: operator *: 344]"<<std::endl;
+// #endif
     typedef EExprWinElemOp <T, EExpr<T,A>, EExpr<T,B>, Mul<T>> ExprT;
     return EExpr <T, ExprT>( ExprT( a,b ) );
 }
@@ -351,9 +342,9 @@ template <typename T, class A, class B>
 EExpr <T, EExprWinElemOp<T, EExpr<T,A>, EExpr<T,B>, Sub<T>>>
 operator -( EExpr<T,A> a, EExpr<T,B> b )
 {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-expr-elem.hpp: operator -: 355]"<<std::endl;
-#endif
+// #ifdef DEBUG
+//         std::cout<<"|DEBUG| [rmacxx-expr-elem.hpp: operator -: 355]"<<std::endl;
+// #endif
     typedef EExprWinElemOp <T, EExpr<T,A>, EExpr<T,B>, Sub<T>> ExprT;
     return EExpr <T, ExprT>( ExprT( a,b ) );
 }
@@ -362,9 +353,9 @@ template <typename T, class A, class B>
 EExpr <T, EExprWinElemOp<T, EExpr<T,A>, EExpr<T,B>, Div<T>>>
 operator /( EExpr<T,A> a, EExpr<T,B> b )
 {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-expr-elem.hpp: operator /: 366]"<<std::endl;
-#endif
+// #ifdef DEBUG
+//         std::cout<<"|DEBUG| [rmacxx-expr-elem.hpp: operator /: 366]"<<std::endl;
+// #endif
     typedef EExprWinElemOp <T, EExpr<T,A>, EExpr<T,B>, Div<T>> ExprT;
     return EExpr <T, ExprT>( ExprT( a,b ) );
 }
@@ -375,9 +366,9 @@ template <typename T, class A>
 EExpr <T, EExprWinScalarOp<T, EExpr<T,A>, Mul<T>>>
 operator *( typename id<T>::type d, EExpr<T,A> a )
 {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-expr-elem.hpp: (scalar) operator *: 379]"<<std::endl;
-#endif
+// #ifdef DEBUG
+//         std::cout<<"|DEBUG| [rmacxx-expr-elem.hpp: (scalar) operator *: 379]"<<std::endl;
+// #endif
     typedef EExprWinScalarOp <T, EExpr<T,A>, Mul<T>> ExprT;
     return EExpr <T, ExprT>( ExprT( d,a ) );
 }
@@ -386,9 +377,9 @@ template <typename T, class A>
 EExpr <T, EExprWinScalarOp<T, EExpr<T,A>, Add<T>>>
 operator +( typename id<T>::type d, EExpr<T,A> a )
 {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-expr-elem.hpp: (scalar) operator +: 390]"<<std::endl;
-#endif
+// #ifdef DEBUG
+//         std::cout<<"|DEBUG| [rmacxx-expr-elem.hpp: (scalar) operator +: 390]"<<std::endl;
+// #endif
     typedef EExprWinScalarOp <T, EExpr<T,A>, Add<T>> ExprT;
     return EExpr <T, ExprT>( ExprT( d,a ) );
 }
@@ -397,9 +388,9 @@ template <typename T, class A>
 EExpr <T, EExprWinScalarOp<T, EExpr<T,A>, Sub<T>>>
 operator -( typename id<T>::type d, EExpr<T,A> a )
 {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-expr-elem.hpp: (scalar) operator -: 401]"<<std::endl;
-#endif
+// #ifdef DEBUG
+//         std::cout<<"|DEBUG| [rmacxx-expr-elem.hpp: (scalar) operator -: 401]"<<std::endl;
+// #endif
     typedef EExprWinScalarOp <T, EExpr<T,A>, Sub<T>> ExprT;
     return EExpr <T, ExprT>( ExprT( d,a ) );
 }
@@ -408,9 +399,9 @@ template <typename T, class A>
 EExpr <T, EExprWinScalarOp<T, EExpr<T,A>, Div<T>>>
 operator /( typename id<T>::type d, EExpr<T,A> a )
 {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-expr-elem.hpp: (scalar) operator /: 412]"<<std::endl;
-#endif
+// #ifdef DEBUG
+//         std::cout<<"|DEBUG| [rmacxx-expr-elem.hpp: (scalar) operator /: 412]"<<std::endl;
+// #endif
     typedef EExprWinScalarOp <T, EExpr<T,A>, Div<T>> ExprT;
     return EExpr <T, ExprT>( ExprT( d,a ) );
 }
@@ -421,9 +412,9 @@ template <typename T, class A>
 EExpr <T, EExprWinScalarOp<T, EExpr<T,A>, Mul<T>>>
 operator *( EExpr<T,A> a, typename id<T>::type d )
 {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-expr-elem.hpp: operator (scalar) *: 425]"<<std::endl;
-#endif
+// #ifdef DEBUG
+//         std::cout<<"|DEBUG| [rmacxx-expr-elem.hpp: operator (scalar) *: 425]"<<std::endl;
+// #endif
     typedef EExprWinScalarOp <T, EExpr<T,A>, Mul<T>> ExprT;
     return EExpr<T, ExprT>( ExprT( a,d ) );
 }
@@ -432,9 +423,9 @@ template <typename T, class A>
 EExpr <T, EExprWinScalarOp<T, EExpr<T,A>, Add<T>>>
 operator +( EExpr<T,A> a, typename id<T>::type d )
 {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-expr-elem.hpp: operator (scalar) >>: 436]"<<std::endl;
-#endif
+// #ifdef DEBUG
+//         std::cout<<"|DEBUG| [rmacxx-expr-elem.hpp: operator (scalar) >>: 436]"<<std::endl;
+// #endif
     typedef EExprWinScalarOp <T, EExpr<T,A>, Add<T>> ExprT;
     return EExpr <T, ExprT>( ExprT( a,d ) );
 }
@@ -443,9 +434,9 @@ template <typename T, class A>
 EExpr <T, EExprWinScalarOp<T, EExpr<T,A>, Sub<T>>>
 operator -( EExpr<T,A> a, typename id<T>::type d )
 {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-expr-elem.hpp: operator (scalar) -: 447]"<<std::endl;
-#endif
+// #ifdef DEBUG
+//         std::cout<<"|DEBUG| [rmacxx-expr-elem.hpp: operator (scalar) -: 447]"<<std::endl;
+// #endif
     typedef EExprWinScalarOp <T, EExpr<T,A>, Sub<T>> ExprT;
     return EExpr <T, ExprT>( ExprT( a,d ) );
 }
@@ -454,9 +445,9 @@ template <typename T, class A>
 EExpr <T, EExprWinScalarOp<T, EExpr<T,A>, Div<T>>>
 operator /( EExpr<T,A> a, typename id<T>::type d )
 {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-expr-elem.hpp: operator (scalar) /: 458]"<<std::endl;
-#endif
+// #ifdef DEBUG
+//         std::cout<<"|DEBUG| [rmacxx-expr-elem.hpp: operator (scalar) /: 458]"<<std::endl;
+// #endif
     typedef EExprWinScalarOp <T, EExpr<T,A>, Div<T>> ExprT;
     return EExpr <T, ExprT>( ExprT( a,d ) );
 }

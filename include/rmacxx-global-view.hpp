@@ -359,6 +359,9 @@ public:
 #endif
         T* localBuf = wget();
 
+#ifdef DEBUG
+        std::cout << "Num elements: " << nelems_ << std::endl;
+#endif
         for ( int i = 0; i < nelems_; i++ )
             localBuf[i] = val;
 
@@ -376,7 +379,9 @@ public:
         std::cout<<"|DEBUG| [rmacxx-global-view.hpp: access: 376]"<<std::endl;
 #endif
         T* base = wget();
-
+#ifdef DEBUG
+        std::cout << "Num dimensions: " << ndims_ << std::endl;
+#endif
         if ( ndims_ > 1 )
         {
             int dim = 0, idx = 0;	
@@ -411,6 +416,9 @@ public:
 #endif
         T* localBuf = wget();
 
+#ifdef DEBUG
+        std::cout << "Num elems: " << nelems_ << std::endl;
+#endif
         for ( int i = 0; i < nelems_; i++ )
             localBuf[i] *= (T)(2.0);
 
@@ -505,6 +513,10 @@ public:
 
         if ( commRank_ == 0 )
             std::cout << s << std::endl;
+
+#ifdef DEBUG
+        std::cout << "Num dimensions: " << ndims_ << std::endl;
+#endif
 
         if ( ndims_ == 2 ) // 2d layout
         {
@@ -608,6 +620,10 @@ public:
 #endif
         bool found = false;
 
+#ifdef DEBUG
+        std::cout << "Num dimensions: " << ndims_ << std::endl;
+#endif
+
         for ( int p = 0; p < commSize_; p++ )
         {                
             if ( ndims_ > 1 )
@@ -671,6 +687,10 @@ public:
         std::cout<<"|DEBUG| [rmacxx-global-view.hpp: find_target: 671]"<<std::endl;
 #endif
         bool found = false;
+
+#ifdef DEBUG
+        std::cout << "Num dimensions: " << ndims_ << std::endl;
+#endif
 
         for ( int p = 0; p < commSize_; p++ )
         {
@@ -744,9 +764,6 @@ public:
     // ctor which takes an init_list
     inline WIN& operator()( std::initializer_list<int> const& l,  std::initializer_list<int> const& h, X )
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-global-view.hpp: operator (): 748]"<<std::endl;
-#endif
         lock();
 
         if ( ndims_ > 1 )
@@ -779,9 +796,6 @@ public:
     // in this function
     inline WIN& operator()( std::initializer_list<int> const& l, X )
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-global-view.hpp: operator (): 783]"<<std::endl;
-#endif
         lock();
 
         // target_, disp_ will be computed
@@ -796,9 +810,6 @@ public:
     // object
     inline EExpr<T,RefEExpr<T,WIN>> operator()( std::initializer_list<int> const& l, Y )
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-global-view.hpp: operator (): 800]"<<std::endl;
-#endif
         lock();
         
         is_expr_elem_ = true;
@@ -870,9 +881,6 @@ public:
     // bulk expression
     inline BExpr<T,RefBExpr<T,WIN>> operator()( std::initializer_list<int> const& l, std::initializer_list<int> const& h, Y )
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-global-view.hpp: operator (): 874]"<<std::endl;
-#endif
         lock();
 
         is_expr_bulk_ = true;
@@ -1019,6 +1027,10 @@ public:
         std::cout<<"|DEBUG| [rmacxx-global-view.hpp: bexpr_outstanding_gets: 1019]"<<std::endl;
 #endif
         lock();
+
+#ifdef DEBUG
+        std::cout << "Num dimensions: " << ndims_ << std::endl;
+#endif
 
         for ( int k = 0; k < expr_bulk_get_counter_; k++ )
         {
@@ -1212,6 +1224,10 @@ public:
 #endif
         lock();
 
+#ifdef DEBUG
+        std::cout << "Num dimensions: " << ndims_ << std::endl;
+#endif
+
         if ( ndims_ == 1 )
         {
             expr_issue_counter_ -= 3;
@@ -1301,6 +1317,10 @@ public:
 #endif
         lock();
 
+#ifdef DEBUG
+        std::cout << "Num dimensions: " << ndims_ << std::endl;
+#endif
+
         for ( int k = 0; k < expr_bulk_put_counter_; k++ )
         {
             if ( watmc_ == ATOMIC_PUT_GET )
@@ -1329,6 +1349,10 @@ public:
             }
             else
             {
+
+#ifdef DEBUG
+        std::cout << "Num dimensions: " << ndims_ << std::endl;
+#endif
                 if ( ndims_ == 1 )
                 {
                     MPI_Put( origin_addr, defer_put_xfer_1D_[expr_put_eval_counter_].count_,
@@ -1400,9 +1424,6 @@ public:
 
     inline WIN& operator()( std::initializer_list<int> const& l, Op op )
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-global-view.hpp: operator(): 1404]"<<std::endl;
-#endif
         lock();
         winop_ = op;
         
@@ -1417,9 +1438,6 @@ public:
     // ------------------
     inline WIN& operator()( std::initializer_list<int> const& l, std::initializer_list<int> const& h, Op op, T const* inpval )
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-global-view.hpp: operator (): 1421]"<<std::endl;
-#endif
         lock();
         winop_ = op;
 
@@ -1455,9 +1473,6 @@ public:
     // ----------------
     inline WIN& operator()( std::initializer_list<int> const& l, Op op, T inpval )
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-global-view.hpp: operator (): 1459]"<<std::endl;
-#endif
         lock();
         winop_ = op;
 
@@ -1475,9 +1490,6 @@ public:
     // --------------------
     inline WIN& operator()( std::initializer_list<int> const& l, const T inpval, const T cmpval )
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-global-view.hpp: operator (): 1479]"<<std::endl;
-#endif
         lock();
         is_cas_ = true;
         
@@ -1555,6 +1567,10 @@ public:
 #endif
         int count = 0, total_count = 0;
         lock();
+
+#ifdef DEBUG
+        std::cout << "Num dimensions: " << ndims_ << std::endl;
+#endif
 
         for ( int k = 0; k < expr_bulk_get_counter_; k++ )
         {
@@ -1701,9 +1717,6 @@ public:
     // -------------------------------------
     void operator <<( const T* origin_addr )
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-global-view.hpp: operator <<: 1705]"<<std::endl;
-#endif
         if ( winop_.op == MPI_OP_NULL )
             RMACXX_GLOBAL_CONTIG_BULK_XFER(origin_addr, RMACXX_BULK_PUT_GLOBAL);
         else
@@ -1726,9 +1739,6 @@ public:
     // ------------------------------------
     void operator >>( T* origin_addr )
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-global-view.hpp: operator >>: 1730]"<<std::endl;
-#endif
         if ( is_fop_ )
 	{
             RMACXX_GLOBAL_CONTIG_BULK_XFER(origin_addr, RMACXX_BULK_GACC_GLOBAL);
@@ -1759,9 +1769,6 @@ public:
     // ---------------------------------------------------
     void operator <<( RMACXX_Subarray_t<T, GLOBAL_VIEW> const& origin )
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-global-view.hpp: operator <<: 1763]"<<std::endl;
-#endif
         if ( winop_.op == MPI_OP_NULL )
             RMACXX_GLOBAL_BULK_XFER_NC(origin, RMACXX_BULK_PUT_GLOBAL);
         else
@@ -1783,9 +1790,6 @@ public:
     // --------------------------------------------------
     void operator >>( RMACXX_Subarray_t<T, GLOBAL_VIEW> const& origin )
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-global-view.hpp: operator >>: 1787]"<<std::endl;
-#endif
         if ( is_fop_ )
         {
             RMACXX_GLOBAL_BULK_XFER_NC(origin, RMACXX_BULK_GACC_GLOBAL);
@@ -1809,9 +1813,6 @@ public:
     // ---------------------------------------------
     void operator <<( const T val )
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-global-view.hpp: operator >>: 1813]"<<std::endl;
-#endif
         if ( winop_.op == MPI_OP_NULL )
             RMACXX_ELEM_PUT( val );
         else
@@ -1823,9 +1824,6 @@ public:
     // --------------------------------------------
     void operator >>( T& val )
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-global-view.hpp: operator >>: 1827]"<<std::endl;
-#endif
         if ( is_fop_ )
             RMACXX_FOP( val );
         else if ( is_cas_ )
