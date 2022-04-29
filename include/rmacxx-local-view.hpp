@@ -170,9 +170,6 @@ public:
     // return a pointer to the window buffer
     inline T* wget() const
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-local-view.hpp: wget(): 175]"<<std::endl;
-#endif
         int flag = 0;
         T* wbaseptr = nullptr;
         MPI_Win_get_attr( win_, MPI_WIN_BASE, &wbaseptr, &flag );
@@ -182,9 +179,6 @@ public:
     // fill value in the buffer attached to the window
     inline void fill( T val ) const
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-local-view.hpp: operator >>: 187]"<<std::endl;
-#endif
         T* localBuf = wget();
 
         for ( int i = 0; i < nelems_; i++ )
@@ -198,9 +192,6 @@ public:
     // otherwise returns data as per flat 1d layout
     void print( std::string const& s ) const
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-local-view.hpp: print(): 203]"<<std::endl;
-#endif
         MPI_Barrier( comm_ );
         T* buf = wget();
 
@@ -257,9 +248,6 @@ public:
     // takes control
     inline MPI_Win& wunlock()
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-local-view.hpp: wunlock(): 262]"<<std::endl;
-#endif
         if ( iswinlocked_ )
         {
             MPI_Win_unlock_all( win_ );
@@ -274,9 +262,6 @@ public:
     // by default MPI_MODE_NOCHECK
     inline MPI_Win& wlock()
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-local-view.hpp: wunlock(): 279]"<<std::endl;
-#endif
         if ( !iswinlocked_ )
         {
             MPI_Win_lock_all( MPI_MODE_NOCHECK, win_ );
@@ -290,9 +275,6 @@ public:
     // default blocking
     inline bool is_win_b() const
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-local-view.hpp: is_win_b(): 295]"<<std::endl;
-#endif
         if ( wcmpl_ == NO_FLUSH )
             return false;
 
@@ -319,6 +301,8 @@ public:
     inline typename std::conditional<( wuse_==NO_EXPR ), WIN&, BExpr<T,RefBExpr<T,WIN>>>::type
     operator()( int target, std::initializer_list<int64_t> const& lo, std::initializer_list<int64_t> const& hi )
     { return operator()( target, lo, hi, std::conditional_t<( wuse_==NO_EXPR ), X, Y> {} ); }
+
+    template
 
     // for put/get
     // --------------------
@@ -375,7 +359,7 @@ public:
 
         return *this;
     }
-   
+
     // TODO FIXME this is only syntactic sugar, does this work
     // for all cases? if yes, also handle expression cases 
     inline WIN& operator()( int target, std::initializer_list<int64_t> const& lo, std::initializer_list<int64_t> const&  hi, X )
@@ -387,7 +371,7 @@ public:
         {
             int i = 0;
             count_dimn_ = 1;
-            auto ilo = lo.begin();
+            CopyConstructable ilo = lo.begin();
             std::for_each( hi.begin(), hi.end(), [this, &ilo, &i] ( int64_t hi_val )
             {
                 subsizes_[i] = (int)(hi_val - *ilo + 1);
@@ -474,9 +458,6 @@ public:
     // expression window access
     void eexpr_outstanding_gets() const
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-local-view.hpp: operator(): 494]"<<std::endl;
-#endif
         lock();
 
         if ( expr_buf_counter_ < PREALLOC_BUF_SZ )
@@ -506,9 +487,6 @@ public:
     // in EXPR cases stores {target, count, disp}
     inline void resize_expr_info_1D_()
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-local-view.hpp: resize_expr_info_1D: 526]"<<std::endl;
-#endif
         int new_sz = expr_issue_counter_ + ( 3*DEFAULT_EXPR_COUNT );
         int* new_expr_info_1D = new int[new_sz];
         memcpy( new_expr_info_1D, expr_info_1D_,
@@ -564,9 +542,6 @@ public:
     // expression window access
     void bexpr_outstanding_gets() const
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-local-view.hpp: bexpr_outsanding_gets(): 587]"<<std::endl;
-#endif
         lock();
 
         // post gets if space available on buffer
@@ -727,9 +702,6 @@ public:
     // params are going to be used for a put
     inline void expr_ignore_last_get() const
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-local-view.hpp: expr_ignore_last_get(): 750]"<<std::endl;
-#endif
         lock();
 
         if ( ndims_ == 1 )
@@ -767,9 +739,6 @@ public:
     // user calls flush
     void eexpr_outstanding_put( const T val ) const
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-local-view.hpp: eepr_outstanding_put(): 790]"<<std::endl;
-#endif
         lock();
 
         if ( watmc_ == ATOMIC_PUT_GET )
@@ -792,9 +761,6 @@ public:
 
     void bexpr_outstanding_put( const T* origin_addr ) const
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-local-view.hpp: bexpr_outstanding_put: 815]"<<std::endl;
-#endif
         lock();
 
         if ( watmc_ == ATOMIC_PUT_GET )
@@ -1039,9 +1005,6 @@ public:
     // any pending deferred gets
     T eval() const
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-local-view.hpp: eval(): 1081]"<<std::endl;
-#endif
         T val = T( 0 );
         
         lock();
@@ -1075,13 +1038,9 @@ public:
 
         expr_size_counter_++;
         expr_xfer1D_counter_ += 3;  
-#ifdef DEBUG
-        std::cout<<"expr_size_counter: "<< expr_size_counter_ << "\texpr_xfer1d_counter_: " << expr_xfer1D_counter_ <<std::endl;
-#endif        
+     
         unlock();
-#ifdef DEBUG
-        std::cout<<"val: "<< val <<std::endl;
-#endif
+
         return val;
     }
 
@@ -1092,23 +1051,16 @@ public:
     // returns the count of elements processed in get
     int fillInto( T* buf ) const
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-local-view.hpp: fillInto(): 1129]"<<std::endl;
-#endif
         int count = 0;
         
         lock();
-#ifdef DEBUG
-        std::cout<<"ndims_: "<< ndims_ <<std::endl;
-#endif
+
         if ( ndims_ > 1 )
         {
             // check if preallocated buffer was used in a previously
             // issued get
             count = defer_xfer_nD_[expr_xferND_counter_].count_;
-#ifdef DEBUG
-            std::cout<<"count: "<< count <<std::endl;
-#endif
+
             if ( expr_size_counter_ == 0 && ( ( expr_size_counter_ + count ) < PREALLOC_BUF_SZ ) )
             {
                 // flush on MPI_PROC_NULL throws an error, so trying to prevent it
@@ -1156,9 +1108,7 @@ public:
             // check if preallocated buffer was used in a previously
             // issued get
             count = expr_info_1D_[expr_xfer1D_counter_+1];
-#ifdef DEBUG
-            std::cout<<"count: "<< count <<std::endl;
-#endif
+
             if ( expr_size_counter_ == 0 && ( ( expr_size_counter_ + count ) < PREALLOC_BUF_SZ ) )
             {
                 flush_local( expr_info_1D_[expr_xfer1D_counter_] );
@@ -1198,9 +1148,6 @@ public:
 
         expr_bptr_ = buf;
         
-#ifdef DEBUG
-        std::cout<<"expr_bptr_: "<< expr_bptr_ <<std::endl;
-#endif
         unlock();
         
         return count;

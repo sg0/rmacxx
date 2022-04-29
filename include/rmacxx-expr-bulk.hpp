@@ -50,9 +50,6 @@ public:
 
     inline static void flush()
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-expr-bulk.hpp: flush: 54]"<<std::endl;
-#endif
         if ( !Handles<T>::instance().bexpr_handles_.empty() )
         {
             for ( unsigned int i = 0; i < Handles<T>::instance().bexpr_handles_.size(); i++ )
@@ -283,19 +280,10 @@ public:
 
     int fillInto( T* buf ) const
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-expr-bulk.hpp: fillInto: 295]"<<std::endl;
-#endif
         int count = u_.fillInto( buf );
 
-#ifdef DEBUG
-        std::cout<< "count: " << count <<std::endl;
-#endif
         for ( int i = 0; i < count; i++ ){
             buf[i] = operator()( i );
-#ifdef DEBUG
-             std::cout<< "i: " << i << "\tbuf[i]: "<< buf[i] <<std::endl;
-#endif
         }
         return count;
     }
@@ -340,9 +328,6 @@ public:
     
     int fillInto( T* buf ) const
     {
-#ifdef DEBUG
-        std::cout<<"|DEBUG| [rmacxx-expr-bulk.hpp: fillInto: 346]"<<std::endl;
-#endif
         T* cache = nullptr;
         const int count = v_.fillInto( buf );
 
@@ -358,14 +343,8 @@ public:
         // buffer, hence we need to get it
         u_.fillInto( cache );
 
-#ifdef DEBUG
-        std::cout<< "count: " << count <<std::endl;
-#endif
         for ( int i = 0; i < count; i++ ){
             buf[i] = operator()( i );
-#ifdef DEBUG
-             std::cout<< "i: " << i << "\tbuf[i]: "<< buf[i] <<std::endl;
-#endif
         }
         if ( mem == nullptr )
             delete []cache;
