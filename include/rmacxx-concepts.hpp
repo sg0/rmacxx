@@ -1,7 +1,7 @@
 // #define DEBUG
 
-template<typename T>
-concept CopyConstructable = std::is_copy_constructabl<T>;
+template< class T >
+inline constexpr bool is_copy_constructible_v = is_copy_constructible<T>::value;
 
 // template<typename T>
 // concept SameSize =
