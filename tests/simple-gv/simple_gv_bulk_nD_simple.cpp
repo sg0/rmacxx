@@ -12,13 +12,13 @@ int main(int argc, char *argv[])
     // create window
     if (rank == 0) // process #0
     { 
-        dims[0] = 2; dims[1] = 2;
-        pgrid[0] = 0; pgrid[1] = 0;
+        dims[0] = 0; dims[1] = 0;
+        pgrid[0] = 2; pgrid[1] = 2;
     }
     else // process #1
     {
-        dims[0] = 2; dims[1] = 2;
-        pgrid[0] = 0; pgrid[1] = 1;
+        dims[0] = 0; dims[1] = 3;
+        pgrid[0] = 2; pgrid[1] = 4;
     }
            
     rmacxx::Window<int,GLOBAL_VIEW> win(dims, pgrid);
