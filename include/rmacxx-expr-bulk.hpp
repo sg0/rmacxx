@@ -47,7 +47,7 @@ public:
     { v_.expr_ignore_last_get(); }
 
     int fillInto( T* buf ) const { return v_.fillInto( buf ); }
-
+#ifdef RMACXX_USE_CLASSIC_HANDLES
     inline static void flush()
     {
         if ( !Handles<T>::instance().bexpr_handles_.empty() )
@@ -112,7 +112,7 @@ public:
             Handles<T>::instance().bexpr_clear();
         }
     }
-
+#endif
     // user managed buffer in the RHS
     inline void operator >>( T* buf )
     {
@@ -206,6 +206,7 @@ public:
             }
 
 #endif
+
         }
 
         // issue put, user will need to call flush
@@ -372,7 +373,7 @@ private:
 
 // s/A
 template <typename T, class U>
-BExpr <T, BExprWinScalarOp<T, BExpr<T,U>, Div<T>>>
+BExpr <T, BExprWinScalarOp<T, BExpr<T,U>, Div<T> > >
 operator/( typename id<T>::type c, BExpr<T,U> u )
 {
     typedef BExprWinScalarOp <T, BExpr<T,U>, Div<T>> DivT;
@@ -381,7 +382,7 @@ operator/( typename id<T>::type c, BExpr<T,U> u )
 
 // A/s
 template <typename T, class U>
-BExpr <T, BExprWinScalarOp<T,BExpr<T,U>, Div<T>>>
+BExpr <T, BExprWinScalarOp<T,BExpr<T,U>, Div<T> > >
 operator/( BExpr<T,U> u, typename id<T>::type c )
 {
     typedef BExprWinScalarOp <T, BExpr<T,U>, Div<T>> DivT;
@@ -390,7 +391,7 @@ operator/( BExpr<T,U> u, typename id<T>::type c )
 
 // s+A
 template <typename T, class U>
-BExpr <T, BExprWinScalarOp<T, BExpr<T,U>, Add<T>>>
+BExpr <T, BExprWinScalarOp<T, BExpr<T,U>, Add<T> > >
 operator +( typename id<T>::type c, BExpr<T,U> u )
 {
     typedef BExprWinScalarOp <T, BExpr<T,U>, Add<T>> SumT;
@@ -398,7 +399,7 @@ operator +( typename id<T>::type c, BExpr<T,U> u )
 }
 // A+s
 template <typename T, class U>
-BExpr <T, BExprWinScalarOp<T,BExpr<T,U>, Add<T>>>
+BExpr <T, BExprWinScalarOp<T,BExpr<T,U>, Add<T> > >
 operator+( BExpr<T,U> u, typename id<T>::type c )
 {
     typedef BExprWinScalarOp <T, BExpr<T,U>, Add<T>> SumT;
@@ -406,7 +407,7 @@ operator+( BExpr<T,U> u, typename id<T>::type c )
 }
 // s*A
 template <typename T, class U>
-BExpr <T, BExprWinScalarOp<T, BExpr<T,U>, Mul<T>>>
+BExpr <T, BExprWinScalarOp<T, BExpr<T,U>, Mul<T> > >
 operator*( typename id<T>::type c, BExpr<T,U> u )
 {
     typedef BExprWinScalarOp <T, BExpr<T,U>, Mul<T>> MulT;
@@ -415,7 +416,7 @@ operator*( typename id<T>::type c, BExpr<T,U> u )
 
 // A*s
 template <typename T, class U>
-BExpr <T, BExprWinScalarOp <T, BExpr<T,U>, Mul<T>>>
+BExpr <T, BExprWinScalarOp <T, BExpr<T,U>, Mul<T> > >
 operator*( BExpr<T,U> u, typename id<T>::type c )
 {
     typedef BExprWinScalarOp <T, BExpr<T,U>, Mul<T>> MulT;
@@ -423,7 +424,7 @@ operator*( BExpr<T,U> u, typename id<T>::type c )
 }
 // A + B
 template <typename T, class U, class V>
-BExpr <T, BExprWinElemOp <T, BExpr<T,U>, BExpr<T,V>, Add<T>>>
+BExpr <T, BExprWinElemOp <T, BExpr<T,U>, BExpr<T,V>, Add<T> > >
 operator+( BExpr<T,U> u, BExpr<T,V> v )
 {
     typedef BExprWinElemOp <T, BExpr<T,U>, BExpr<T,V>, Add<T>> SumT;
@@ -432,7 +433,7 @@ operator+( BExpr<T,U> u, BExpr<T,V> v )
 
 // A * B
 template <typename T, class U, class V>
-BExpr <T, BExprWinElemOp <T, BExpr<T,U>, BExpr<T,V>, Mul<T>>>
+BExpr <T, BExprWinElemOp <T, BExpr<T,U>, BExpr<T,V>, Mul<T> > >
 operator*( BExpr<T,U> u, BExpr<T,V> v )
 {
     typedef BExprWinElemOp <T, BExpr<T,U>, BExpr<T,V>, Mul<T>> MulT;

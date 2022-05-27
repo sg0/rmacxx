@@ -15,6 +15,24 @@ class Window<T, GLOBAL_VIEW, wuse_, wcmpl_, watmc_, wtsft_>
 {
     using WIN = Window <T, GLOBAL_VIEW, wuse_, wcmpl_, watmc_, wtsft_>;
 
+#ifdef RMACXX_USE_CLASSIC_HANDLES
+    #define GWFLUSH() do {\
+        if ( is_expr_elem_ ) EExpr<T, WIN>::flush();\
+        if ( is_expr_bulk_ ) BExpr<T, WIN>::flush();\
+        flush_expr();\
+    } while(0)
+    #define GW_RESERVE_EXPR() {}
+    #define GW_CLEAR_EXPR() {}
+#else
+    #define GWFLUSH() do {\
+        if ( is_expr_elem_ ) EExpr<T, WIN>::flush();\
+        if ( is_expr_bulk_ ) BExpr<T, WIN>::flush();\
+        flush_expr();\
+    } while(0)
+    #define GW_RESERVE_EXPR() expressions_.reserve(DEFAULT_EXPR_COUNT)
+    #define GW_CLEAR_EXPR() expressions_.clear()
+#endif
+
 public:
     // TODO FIXME removed cart_comm ctor for now due to some bugs
     // shall bring it back soon after clean up
@@ -197,6 +215,7 @@ public:
             expr_past_bulk_get_counter_    = 0; \
             expr_bulk_get_counter_         = 0; \
             expr_bulk_put_counter_         = 0; \
+            GW_CLEAR_EXPR();\
         } \
         /* used for subarray construction for ndims > 1 */ \
         if ( ndims_ > 1 ) \
@@ -423,6 +442,7 @@ public:
             defer_xfer_nD_.clear();
             defer_put_xfer_1D_.clear();
             defer_put_xfer_nD_.clear();
+            GW_CLEAR_EXPR();
         }
 
         expr_bptr_ = nullptr;
@@ -1710,6 +1730,7 @@ public:
         defer_xfer_nD_.clear();
         defer_put_xfer_nD_.clear();
         defer_put_xfer_1D_.clear();
+        GW_CLEAR_EXPR();
         
         expr_get_counter_               = 0;
         expr_getND_counter_             = 0;
@@ -1941,15 +1962,11 @@ public:
         // have invoked flush in that case anyway
         if ( wcmpl_ == NO_FLUSH || wcmpl_ == LOCAL_FLUSH )
         {
-            // flush is a static member in (B|E)Expr
-            if ( is_expr_elem_ ) EExpr<T, WIN>::flush();
-
-            if ( is_expr_bulk_ ) BExpr<T, WIN>::flush();
-
-            flush_expr();
+            GWFLUSH();
         }
     }
 
+    inline void add_expr(exprid expr) const { this->expressions_.emplace_back(expr); }
     // this is to make it easy to just call flush_all
     // from the expression classes
     inline void flush_win() const
@@ -1971,11 +1988,7 @@ public:
     {
         if ( wcmpl_ == NO_FLUSH )
         {
-            if ( is_expr_elem_ ) EExpr<T, WIN>::flush();
-
-            if ( is_expr_bulk_ ) BExpr<T, WIN>::flush();
-
-            flush_expr();
+            GWFLUSH();
         }
     }
 
@@ -2087,6 +2100,9 @@ private:
     T* cas_inp_;
     bool is_fop_, is_cas_, is_comm_dupd_;
 
+#ifndef RMACXX_USE_CLASSIC_HANDLES
+    std::vector<exprid> expressions_;
+#endif
     // parameters for subarray construction
     mutable std::vector<int> subsizes_, starts_;
     mutable std::vector<int> lsizes_, lstarts_;
