@@ -14,3 +14,9 @@ make check -k -B
 
 # To run all tests from root:
 make -C tests check -k -B
+
+# To use the shell script:
+run.sh /path/to/test/without/extension number_of_processes
+# Example from root:
+./tests/run.sh tests/expr-elem/expr-elem 2
+# Note: You may have to give the script executable permissions to run it
