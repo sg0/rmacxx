@@ -1,4 +1,5 @@
 #include "rmacxx.hpp"
+#include <cassert>
 
 int main(int argc, char *argv[])
 {
@@ -13,11 +14,11 @@ int main(int argc, char *argv[])
     if (rank == 0) // process #0
     { 
         dims[0] = 0; dims[1] = 0; dims[2] = 0; dims[3] = 0;
-        pgrid[0] = 1; pgrid[1] = 1; pgrid[2] = 1; pgrid[3] = 1;
+        pgrid[0] = 1; pgrid[1] = 3; pgrid[2] = 3; pgrid[3] = 3;
     }
     else // process #1
     {
-        dims[0] = 2; dims[1] = 2; dims[2] = 2; dims[3] = 2;
+        dims[0] = 2; dims[1] = 0; dims[2] = 0; dims[3] = 0;
         pgrid[0] = 3; pgrid[1] = 3; pgrid[2] = 3; pgrid[3] = 3;
     }
            
@@ -39,13 +40,16 @@ int main(int argc, char *argv[])
     win.print("Current...");
     
     // put
-    std::vector<int> data(81);
-    for(int i = 0; i < 81; i++)
+    std::vector<int> data(16);
+    for(int i = 0; i < 16; i++)
         data[i] = 3;
 
-    win({0,0,0,0},{2,2,2,2}) << data.data();
+    win({1,1,1,1},{2,2,2,2}) << data.data(); //inner cube is 2x2x2x2, 16 total
     
     win.flush();
+
+    int nums[16];
+    win({1,1,1,1},{2,2,2,2}) >> nums;
     
     win.print("After put...");
 
@@ -54,6 +58,15 @@ int main(int argc, char *argv[])
     win.wfree();
 
     MPI_Finalize();
+
+    if (rank == 0) {
+        bool all_threes = true;
+        for (int i = 0; i < 16; i++) {
+            all_threes = all_threes && nums[i] == 3;
+        }
+        assert(all_threes);
+        std::cout<<"Pass"<<std::endl;
+    }
 
     return 0;
 }
