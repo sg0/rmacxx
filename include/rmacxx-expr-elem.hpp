@@ -13,6 +13,7 @@ public:
     inline WinCompletion completion() const { return p_.completion(); }
     inline void flush_win() const { p_.flush_win(); }
     inline void flush_expr() const { p_.flush_expr(); }
+    inline void add_expr(exprid expr) const { p_.add_expr(expr); }
 
     inline void eexpr_outstanding_gets() const
     { p_.eexpr_outstanding_gets(); }
@@ -35,6 +36,7 @@ public:
     inline WinCompletion completion() const { return v_.completion(); }
     inline void flush_win() const { v_.flush_win(); }
     inline void flush_expr() const { v_.flush_expr(); }
+    inline void add_expr(exprid expr) const { v_.add_expr(expr); }
 
     inline void eexpr_outstanding_gets() const
     { v_.eexpr_outstanding_gets(); }
@@ -42,7 +44,7 @@ public:
     { v_.eexpr_outstanding_put( val ); }
     inline void expr_ignore_last_get() const
     { v_.expr_ignore_last_get(); }
-
+#ifdef RMACXX_USE_CLASSIC_HANDLES
     inline static void flush()
     {
         if ( !Handles<T>::instance().eexpr_handles_.empty() )
@@ -104,7 +106,7 @@ public:
             Handles<T>::instance().eexpr_clear();
         }
     }
-
+#endif
     // >> triggers the evaluation
     inline void operator >>( T& d )
     {
@@ -115,6 +117,7 @@ public:
             d = eval();
         else
         {
+#if defined(RMACXX_USE_CLASSIC_HANDLES)
 #if defined(RMACXX_EEXPR_USE_PLACEMENT_NEW_ALWAYS)
             Handles<T>::instance().eexpr_handles_.
             emplace_back( new ( static_cast<EExpr<T,V>*>( Handles<T>::instance().
@@ -136,6 +139,10 @@ public:
             }
 
 #endif
+#else
+    //! TODO: Replace handles here
+#endif
+
         }
     }
 
@@ -168,6 +175,8 @@ public:
             *c = eval();
         else
         {
+
+#if defined(RMACXX_USE_CLASSIC_HANDLES)
 #if defined(RMACXX_EEXPR_USE_PLACEMENT_NEW_ALWAYS)
             Handles<T>::instance().eexpr_handles_.
             emplace_back( new ( static_cast<EExpr<T,V>*>( Handles<T>::instance().
@@ -187,6 +196,9 @@ public:
                 emplace_back( new ( mem ) EExpr<T,V>( v_ ), c, true );
             }
 
+#endif
+#else
+    //! TODO: Replace handles here
 #endif
         }
 
@@ -255,6 +267,10 @@ public:
         b_.eexpr_outstanding_gets();
     }
 
+    inline void add_expr(exprid expr) const {
+        a_.add_expr(expr);
+        b_.add_expr(expr);
+    }
     inline T eval() const { return OP::apply( a_.eval(), b_.eval() ); }
 
     inline bool is_win_b() const
@@ -284,6 +300,7 @@ public:
 
     inline void eexpr_outstanding_gets() const
     { a_.eexpr_outstanding_gets(); }
+    inline void add_expr(exprid expr) const { a_.add_expr(expr); }
 
     inline T eval() const
     {
@@ -308,7 +325,7 @@ private:
 // operators
 // +
 template <typename T, class A, class B>
-EExpr <T, EExprWinElemOp <T, EExpr<T,A>, EExpr<T,B>, Add<T>>>
+EExpr <T, EExprWinElemOp <T, EExpr<T,A>, EExpr<T,B>, Add<T> > >
 operator+( EExpr<T,A> a, EExpr<T,B> b )
 {
     typedef EExprWinElemOp <T, EExpr<T,A>, EExpr<T,B>, Add<T>> ExprT;
@@ -316,7 +333,7 @@ operator+( EExpr<T,A> a, EExpr<T,B> b )
 }
 // *
 template <typename T, class A, class B>
-EExpr <T, EExprWinElemOp<T, EExpr<T,A>, EExpr<T,B>, Mul<T>>>
+EExpr <T, EExprWinElemOp<T, EExpr<T,A>, EExpr<T,B>, Mul<T> > >
 operator *( EExpr<T,A> a, EExpr<T,B> b )
 {
     typedef EExprWinElemOp <T, EExpr<T,A>, EExpr<T,B>, Mul<T>> ExprT;
@@ -324,7 +341,7 @@ operator *( EExpr<T,A> a, EExpr<T,B> b )
 }
 // -
 template <typename T, class A, class B>
-EExpr <T, EExprWinElemOp<T, EExpr<T,A>, EExpr<T,B>, Sub<T>>>
+EExpr <T, EExprWinElemOp<T, EExpr<T,A>, EExpr<T,B>, Sub<T> > >
 operator -( EExpr<T,A> a, EExpr<T,B> b )
 {
     typedef EExprWinElemOp <T, EExpr<T,A>, EExpr<T,B>, Sub<T>> ExprT;
@@ -332,7 +349,7 @@ operator -( EExpr<T,A> a, EExpr<T,B> b )
 }
 // /
 template <typename T, class A, class B>
-EExpr <T, EExprWinElemOp<T, EExpr<T,A>, EExpr<T,B>, Div<T>>>
+EExpr <T, EExprWinElemOp<T, EExpr<T,A>, EExpr<T,B>, Div<T> > >
 operator /( EExpr<T,A> a, EExpr<T,B> b )
 {
     typedef EExprWinElemOp <T, EExpr<T,A>, EExpr<T,B>, Div<T>> ExprT;
@@ -342,7 +359,7 @@ operator /( EExpr<T,A> a, EExpr<T,B> b )
 // scalar (op) EExpr
 // *
 template <typename T, class A>
-EExpr <T, EExprWinScalarOp<T, EExpr<T,A>, Mul<T>>>
+EExpr <T, EExprWinScalarOp<T, EExpr<T,A>, Mul<T> > >
 operator *( typename id<T>::type d, EExpr<T,A> a )
 {
     typedef EExprWinScalarOp <T, EExpr<T,A>, Mul<T>> ExprT;
@@ -350,7 +367,7 @@ operator *( typename id<T>::type d, EExpr<T,A> a )
 }
 // +
 template <typename T, class A>
-EExpr <T, EExprWinScalarOp<T, EExpr<T,A>, Add<T>>>
+EExpr <T, EExprWinScalarOp<T, EExpr<T,A>, Add<T> > >
 operator +( typename id<T>::type d, EExpr<T,A> a )
 {
     typedef EExprWinScalarOp <T, EExpr<T,A>, Add<T>> ExprT;
@@ -358,7 +375,7 @@ operator +( typename id<T>::type d, EExpr<T,A> a )
 }
 // -
 template <typename T, class A>
-EExpr <T, EExprWinScalarOp<T, EExpr<T,A>, Sub<T>>>
+EExpr <T, EExprWinScalarOp<T, EExpr<T,A>, Sub<T> > >
 operator -( typename id<T>::type d, EExpr<T,A> a )
 {
     typedef EExprWinScalarOp <T, EExpr<T,A>, Sub<T>> ExprT;
@@ -366,7 +383,7 @@ operator -( typename id<T>::type d, EExpr<T,A> a )
 }
 // /
 template <typename T, class A>
-EExpr <T, EExprWinScalarOp<T, EExpr<T,A>, Div<T>>>
+EExpr <T, EExprWinScalarOp<T, EExpr<T,A>, Div<T> > >
 operator /( typename id<T>::type d, EExpr<T,A> a )
 {
     typedef EExprWinScalarOp <T, EExpr<T,A>, Div<T>> ExprT;
@@ -376,7 +393,7 @@ operator /( typename id<T>::type d, EExpr<T,A> a )
 // EExpr (op) scalar
 // *
 template <typename T, class A>
-EExpr <T, EExprWinScalarOp<T, EExpr<T,A>, Mul<T>>>
+EExpr <T, EExprWinScalarOp<T, EExpr<T,A>, Mul<T> > >
 operator *( EExpr<T,A> a, typename id<T>::type d )
 {
     typedef EExprWinScalarOp <T, EExpr<T,A>, Mul<T>> ExprT;
@@ -384,7 +401,7 @@ operator *( EExpr<T,A> a, typename id<T>::type d )
 }
 // +
 template <typename T, class A>
-EExpr <T, EExprWinScalarOp<T, EExpr<T,A>, Add<T>>>
+EExpr <T, EExprWinScalarOp<T, EExpr<T,A>, Add<T> > >
 operator +( EExpr<T,A> a, typename id<T>::type d )
 {
     typedef EExprWinScalarOp <T, EExpr<T,A>, Add<T>> ExprT;
@@ -392,7 +409,7 @@ operator +( EExpr<T,A> a, typename id<T>::type d )
 }
 // -
 template <typename T, class A>
-EExpr <T, EExprWinScalarOp<T, EExpr<T,A>, Sub<T>>>
+EExpr <T, EExprWinScalarOp<T, EExpr<T,A>, Sub<T> > >
 operator -( EExpr<T,A> a, typename id<T>::type d )
 {
     typedef EExprWinScalarOp <T, EExpr<T,A>, Sub<T>> ExprT;
@@ -400,7 +417,7 @@ operator -( EExpr<T,A> a, typename id<T>::type d )
 }
 // /
 template <typename T, class A>
-EExpr <T, EExprWinScalarOp<T, EExpr<T,A>, Div<T>>>
+EExpr <T, EExprWinScalarOp<T, EExpr<T,A>, Div<T> > >
 operator /( EExpr<T,A> a, typename id<T>::type d )
 {
     typedef EExprWinScalarOp <T, EExpr<T,A>, Div<T>> ExprT;

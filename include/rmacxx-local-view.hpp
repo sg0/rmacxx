@@ -13,6 +13,24 @@ class Window<T, LOCAL_VIEW, wuse_, wcmpl_, watmc_, wtsft_>
 {
     using WIN = Window <T, LOCAL_VIEW, wuse_, wcmpl_, watmc_, wtsft_>;
 
+#ifdef RMACXX_USE_CLASSIC_HANDLES
+    #define LWFLUSH() do {\
+        if ( is_expr_elem_ ) EExpr<T, WIN>::flush();\
+        if ( is_expr_bulk_ ) BExpr<T, WIN>::flush();\
+        flush_expr();\
+    } while(0)
+    #define LW_RESERVE_EXPR() {}
+    #define LW_CLEAR_EXPR() {}
+#else
+    #define LWFLUSH() do {\
+        if ( is_expr_elem_ ) EExpr<T, WIN>::flush();\
+        if ( is_expr_bulk_ ) BExpr<T, WIN>::flush();\
+        flush_expr();\
+    } while(0)
+    #define LW_RESERVE_EXPR() expressions_.reserve(DEFAULT_EXPR_COUNT)
+    #define LW_CLEAR_EXPR() expressions_.clear()
+#endif
+
     // TODO allow creation of empty windows, and define
     // methods to populate it later
 public:
@@ -52,11 +70,13 @@ public:
             expr_info_1D_ = new int[expr_past_info_1D_size_]; \
             defer_put_xfer_1D_.reserve(DEFAULT_EXPR_COUNT); \
             defer_put_xfer_nD_.reserve(DEFAULT_EXPR_COUNT); \
+            LW_RESERVE_EXPR();\
         } \
         /* used for subarray construction for ndims > 1 */\
         subsizes_.resize(ndims_); \
         starts_.resize(ndims_); \
     } while(0)
+
 
     /* Win_allocate model */
     Window( std::vector<int> const& dims )
@@ -151,6 +171,7 @@ public:
             defer_xfer_nD_.clear();
             defer_put_xfer_1D_.clear();
             defer_put_xfer_nD_.clear();
+            LW_CLEAR_EXPR();
         }
 
         expr_bptr_ = nullptr;
@@ -1166,6 +1187,7 @@ public:
         defer_xfer_nD_.clear();
         defer_put_xfer_nD_.clear();
         defer_put_xfer_1D_.clear();
+        LW_CLEAR_EXPR();
         expr_get_counter_       = 0;
         expr_getND_counter_     = 0;
         expr_xfer1D_counter_    = 0;
@@ -1309,14 +1331,10 @@ public:
         // have invoked flush in that case anyway
         if ( wcmpl_ == NO_FLUSH || wcmpl_ == LOCAL_FLUSH )
         {
-            // flush is a static member in (B|E)Expr
-            if ( is_expr_elem_ ) EExpr<T, WIN>::flush();
-
-            if ( is_expr_bulk_ ) BExpr<T, WIN>::flush();
-
-            flush_expr();
+            LWFLUSH();
         }
     }
+    inline void add_expr(exprid expr) const { this->expressions_.emplace_back(expr); }
 
     // this is to make it easy to just call flush_all
     // from the expression classes
@@ -1339,11 +1357,7 @@ public:
     {
         if ( wcmpl_ == NO_FLUSH )
         {
-            if ( is_expr_elem_ ) EExpr<T, WIN>::flush();
-
-            if ( is_expr_bulk_ ) BExpr<T, WIN>::flush();
-
-            flush_expr();
+            LWFLUSH();
         }
     }
 
@@ -1434,6 +1448,9 @@ private:
     T* cas_inp_;
     bool is_fop_, is_cas_;
 
+#ifndef RMACXX_USE_CLASSIC_HANDLES
+    std::vector<exprid> expressions_;
+#endif
     mutable std::vector<int> subsizes_;
     mutable std::vector<int> starts_;
     mutable int count_dimn_;

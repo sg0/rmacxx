@@ -9,6 +9,15 @@
 #include <string>
 #include <cstring>
 
+// TODO: Remove feature guard default once development is complete
+#define RMACXX_USE_CLASSIC_HANDLES
+
+#ifndef RMACXX_USE_CLASSIC_HANDLES
+#include <unordered_map>
+#include <unordered_set>
+#include <future>
+#endif
+
 #ifdef RMACXX_USE_SPINLOCK
 #include <atomic>
 std::atomic_flag locked = ATOMIC_FLAG_INIT;
@@ -43,27 +52,11 @@ struct Y {};
 // for expressions
 template <typename T> struct id { typedef T type; };
 
+using exprid = unsigned int;
 
-// base class for element-wise and bulk expressions
-// https://stackoverflow.com/questions/300986/when-should-you-not-use-virtual-destructors
-template <typename T> class EExprBase
-{
-public:
-    virtual T eval() const = 0;
-    virtual void eexpr_outstanding_put( const T val ) const = 0;
-
-    //virtual ~EExprBase() {}
-};
-
-template <typename T> class BExprBase
-{
-public:
-    virtual int fillInto( T* buf ) const = 0;
-    virtual void bexpr_outstanding_put( const T* buf ) const = 0;
-
-    //virtual ~BExprBase() {}
-};
-
+#if defined(RMACXX_USE_CLASSIC_HANDLES)
+template <typename T> class EExprBase;
+template <typename T> class BExprBase;
 template <typename T> struct EExprHandle
 {
     EExprBase<T>* that_;
@@ -229,6 +222,77 @@ private:
         bexpr_buf_( static_cast<char*>( malloc( DEFAULT_BEXPR_SIZE ) ) )
     {}
 };
+#else
+template <typename T> class ExprBase;
+template <typename T> class FuturesManager {
+public:
+    static FuturesManager& instance()
+    {
+        static FuturesManager s_instance;
+        return s_instance;
+    }
+    inline exprid new_id(){
+        exprid new_id = this->next_id_++;
+        expression_liveness_[new_id] = true;
+        return new_id;
+    }
+    inline void remove_expr(exprid id){
+        expression_liveness_[id] = false;
+        expression_completion_futures_[id].~future();
+    }
+    inline void unblock_expr(exprid id){
+        if(expression_liveness_[id]){
+            if((expression_blocking_count_[id]--) == 0){
+                expression_completion_futures_[id].get();
+            }
+        }
+    }
+private:
+    int expression_blocking_count_[DEFAULT_EXPR_COUNT];
+    bool expression_liveness_[DEFAULT_EXPR_COUNT];
+    std::future<void> expression_completion_futures_[DEFAULT_EXPR_COUNT];
+    exprid next_id_ = 0;
+};
+#endif
+// base class for element-wise and bulk expressions
+// https://stackoverflow.com/questions/300986/when-should-you-not-use-virtual-destructors
+#ifndef RMACXX_USE_CLASSIC_HANDLES
+template <typename T> class ExprBase
+{   
+    ExprBase(){
+        this->id_ = FuturesManager<T>::instance().new_id(); 
+    }
+private:
+    exprid id_;
+    ~ExprBase(){
+        FuturesManager<T>::instance().remove_expr(id_);
+    }
+    //virtual ~ExprBase() {}
+};
+#endif
+
+template <typename T> class EExprBase
+#ifndef RMACXX_USE_CLASSIC_HANDLES 
+: ExprBase<T>
+#endif
+{   
+public:
+    virtual T eval() const = 0;
+    virtual void eexpr_outstanding_put( const T val ) const = 0;
+    //virtual ~EExprBase() {}
+};
+
+template <typename T> class BExprBase
+#ifndef RMACXX_USE_CLASSIC_HANDLES 
+: ExprBase<T>
+#endif
+{
+public:
+    virtual int fillInto( T* buf ) const = 0;
+    virtual void bexpr_outstanding_put( const T* buf ) const = 0;
+    //virtual ~BExprBase() {}
+};
+
 
 // class base templates
 
