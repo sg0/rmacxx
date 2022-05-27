@@ -1,4 +1,5 @@
 #include "rmacxx.hpp"
+#include <cassert>
 
 int main(int argc, char *argv[])
 {
@@ -12,13 +13,13 @@ int main(int argc, char *argv[])
     // create window
     if (rank == 0) // process #0
     { 
-        dims[0] = 2; dims[1] = 2;
-        pgrid[0] = 0; pgrid[1] = 0;
+        dims[0] = 0; dims[1] = 0;
+        pgrid[0] = 1; pgrid[1] = 3;
     }
     else // process #1
     {
-        dims[0] = 2; dims[1] = 2;
-        pgrid[0] = 0; pgrid[1] = 1;
+        dims[0] = 2; dims[1] = 0;
+        pgrid[0] = 3; pgrid[1] = 3;
     }
 
     rmacxx::Window<int,GLOBAL_VIEW> win(dims, pgrid);
@@ -44,9 +45,12 @@ int main(int argc, char *argv[])
         data[i] = 3;
     }
 
-    win({0,1},{1,2}) << data.data();
+    win({1,1},{2,2}) << data.data(); //inner cube is 2x2, 4 total
     
     win.flush();
+
+    int nums[4];
+    win({1,1},{2,2}) >> nums;
     
     win.print("After put...");
 
@@ -55,6 +59,15 @@ int main(int argc, char *argv[])
     win.wfree();
 
     MPI_Finalize();
+    
+    if (rank == 0) {
+        bool all_threes = true;
+        for (int i = 0; i < 4; i++) {
+            all_threes = all_threes && nums[i] == 3;
+        }
+        assert(all_threes);
+        std::cout<<"Pass"<<std::endl;
+    }
 
     return 0;
 }
