@@ -40,11 +40,11 @@ int main(int argc, char *argv[])
     win.print("Current...");
     
     // put
-    std::vector<int> data(2187);
-    for(int i = 0; i < 2187; i++)
+    std::vector<int> data(128);
+    for(int i = 0; i < 128; i++)
         data[i] = 3;
 
-    win({1,1,1,1,1,1,1},{2,2,2,2,2,2,2}) << data.data();
+    win({1,1,1,1,1,1,1},{2,2,2,2,2,2,2}) << data.data(); //inner cube is 2x2x2x2x2x2x2, 128 total
     
     win.flush();
 

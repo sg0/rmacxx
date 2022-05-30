@@ -1,4 +1,5 @@
 #include "rmacxx.hpp"
+#include <cassert>
 
 int main(int argc, char *argv[])
 {
@@ -43,7 +44,7 @@ int main(int argc, char *argv[])
     for(int i = 0; i < 32; i++)
         data[i] = 3;
 
-    win({1,1,1,1,1},{2,2,2,2,2}) << data.data(); //inner cube is 2x2x2x2, 16 total
+    win({1,1,1,1,1},{2,2,2,2,2}) << data.data(); //inner cube is 2x2x2x2x2, 32 total
     
     win.flush();
 
