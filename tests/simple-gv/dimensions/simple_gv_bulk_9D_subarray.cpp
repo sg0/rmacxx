@@ -7,33 +7,31 @@ int main(int argc, char *argv[])
     MPI_Init( &argc, &argv );
     MPI_Comm_rank( MPI_COMM_WORLD, &rank );
     
-    std::vector<int> lo(2), hi(2);
-
-    // first dimension is height, then width
+    std::vector<int> lo(9), hi(9);
 
     // create window
     if (rank == 0) // process #0
     { 
-        lo[0] = 0; lo[1] = 0;
-        hi[0] = 2; hi[1] = 3;
+        lo[0] = 0; lo[1] = 0; lo[2] = 0; lo[3] = 0; lo[4] = 0; lo[5] = 0; lo[6] = 0; lo[7] = 0; lo[8] = 0;
+        hi[0] = 1; hi[1] = 1; hi[2] = 3; hi[3] = 3; hi[4] = 3; hi[5] = 3; hi[6] = 3; hi[7] = 3; hi[8] = 3;
     }
     else if (rank == 1) // process #1
     {
-        lo[0] = 0; lo[1] = 4;
-        hi[0] = 4; hi[1] = 11;
+        lo[0] = 2; lo[1] = 0; lo[2] = 0; lo[3] = 0; lo[4] = 0; lo[5] = 0; lo[6] = 0; lo[7] = 0; lo[8] = 0;
+        hi[0] = 3; hi[1] = 1; hi[2] = 3; hi[3] = 3; hi[4] = 3; hi[5] = 3; hi[6] = 3; hi[7] = 3; hi[8] = 3;
     }
     else if (rank == 2) // process #2
     {
-        lo[0] = 3; lo[1] = 0;
-        hi[0] = 7; hi[1] = 3;
+        lo[0] = 0; lo[1] = 2; lo[2] = 0; lo[3] = 0; lo[4] = 0; lo[5] = 0; lo[6] = 0; lo[7] = 0; lo[8] = 0;
+        hi[0] = 1; hi[1] = 3; hi[2] = 3; hi[3] = 3; hi[4] = 3; hi[5] = 3; hi[6] = 3; hi[7] = 3; hi[8] = 3;
     }
     else // process #3
     {
-        lo[0] = 5; lo[1] = 4;
-        hi[0] = 7; hi[1] = 11;
-    }    
+        lo[0] = 2; lo[1] = 2; lo[2] = 0; lo[3] = 0; lo[4] = 0; lo[5] = 0; lo[6] = 0; lo[7] = 0; lo[8] = 0;
+        hi[0] = 3; hi[1] = 3; hi[2] = 3; hi[3] = 3; hi[4] = 3; hi[5] = 3; hi[6] = 3; hi[7] = 3; hi[8] = 3;
+    }   
 
-    rmacxx::Window<int,GLOBAL_VIEW> win(lo, hi); //window is 8x12 = 96
+    rmacxx::Window<int,GLOBAL_VIEW> win(lo, hi); //window is a 4-wide hypercube
 
     if (win.size() != 4)
     {
@@ -51,49 +49,54 @@ int main(int argc, char *argv[])
     win.print("Current...");
 
     // local buffer
-    std::vector<int> data(9*8); //72, 9 tall and 8 wide
-    for(int i = 0; i < 72; i++)
+    std::vector<int> data(19683); //3^9
+    for(int i = 0; i < 19683; i++) {
         data[i] = 0;
-
-    // mark subarray parts, creates a 3x5 of 3's in the middle of the window
-    for(int i = 0; i < 9; i++)
-    {
-        if ((i >= 2) && (i <= 6))
-        {
-            for(int k = 0; k < 3; k++)
-                data[i*8+k+2] = 3;
-        }
     }
-
-    // print local buffer, print the window up to this point
-    if (rank == 0)
+    
+    for(int a = 1; a < 3; a++)
     {
-        std::cout << "Local buffer: " << std::endl;
-        for(int i = 0; i < 9; i++) //x?
+        for(int b = 1; b < 3; b++)
         {
-            for(int k = 0; k < 8; k++) //y?
+            for(int c = 1; c < 3; c++)
             {
-                std::cout << data[i*8+k] << " ";
+                for(int d = 1; d < 3; d++)
+                {
+                    for(int e = 1; e < 3; e++)
+                    {
+                        for(int f = 1; f < 3; f++)
+                        {
+                            for(int g = 1; g < 3; g++)
+                            {
+                                for(int h = 1; h < 3; h++)
+                                {
+                                    for(int i = 1; i < 3; i++)
+                                    {
+                                        data[(i + h*3 + g*9 + f*27 + e*81 + d*243 + c*729 + b*2187 + a*6561)] = 3; //range of 0 to 19682 = 3^9 - 1
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
-            std::cout << std::endl;
         }
     }
 
-    // create subarray type for global transfer
-    rmacxx::RMACXX_Subarray_t<int,GLOBAL_VIEW> sub({2,2},{9,8}); //7x6 = 42
+    int temp = data[data.size() - 1];
+
+    // create subarray type for global transfer     //starts            //sizes
+    rmacxx::RMACXX_Subarray_t<int,GLOBAL_VIEW> sub({0,0,0,0,0,0,0,0,0},{1,1,1,1,1,1,1,1,1}); //extract a 2-wide hypercube
     //rmacxx::RMACXX_Subarray_t<int, GLOBAL_VIEW> sub({2,2}, {4,6});
 
     //window is inclusive
-    //subarray is exclusive
-
-    std::vector<int> data1(3*5);
-    for (int i = 0; i < 15; i++) {
-        data1[i] = 3;
-    }
+    //subarray is inclusive
 
     // put
-    win({2,3},{6,5}) << sub(data.data()); //5x3 = 15
-    //win({2,2},{4,6}) << sub(data1.data());
+    win({1,1,1,1,1,1,1,1,1},{2,2,2,2,2,2,2,2,2}) << sub(data.data()); //put the 2-wide hypercube subarray into the center of the 4-wide hypercube
+
+    int nums[512];
+    win({1,1,1,1,1,1,1,1,1},{2,2,2,2,2,2,2,2,2}) >> nums;
     
     win.flush();
     
@@ -107,6 +110,17 @@ int main(int argc, char *argv[])
     data.clear();
 
     MPI_Finalize();
+
+    std::cout<<temp<<std::endl;
+
+    if (rank == 0) {
+        bool all_threes = true;
+        for (int i = 0; i < 512; i++) {
+            all_threes = all_threes && nums[i] == 3;
+        }
+        assert(all_threes);
+        std::cout<<"Pass"<<std::endl;
+    }
 
     return 0;
 }
