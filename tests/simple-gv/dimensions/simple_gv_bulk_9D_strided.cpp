@@ -31,7 +31,7 @@ int main(int argc, char *argv[])
     {
         lo[0] = 2; lo[1] = 2; lo[2] = 0; lo[3] = 0; lo[4] = 0; lo[5] = 0; lo[6] = 0; lo[7] = 0; lo[8] = 0;
         hi[0] = 3; hi[1] = 3; hi[2] = 3; hi[3] = 3; hi[4] = 3; hi[5] = 3; hi[6] = 3; hi[7] = 3; hi[8] = 3;
-    }    
+    }
 
     rmacxx::Window<int,GLOBAL_VIEW> win(lo, hi);
 
@@ -74,7 +74,7 @@ int main(int argc, char *argv[])
                                 {
                                     for(int i = 1; i < 3; i++)
                                     {
-                                        data[i + h*4 + g*16 + f*64 + e*256 + d*1024 + c*4096 + b*16384 + a*65536] = 3; //range of 0 to 262143
+                                        data[i + h*4 + g*16 + f*64 + e*256 + d*1024 + c*4096 + b*16384 + a*65536] = 3; //range of 0 to 262143 = 4^9 - 1
                                     }
                                 }
                             }

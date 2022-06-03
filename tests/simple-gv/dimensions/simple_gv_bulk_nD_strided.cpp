@@ -51,7 +51,7 @@ int main(int argc, char *argv[])
     win.print("Current...");
 
     // local buffer
-    std::vector<int> data(9*8); //72, 9 tall and 8 wide
+    std::vector<int> data(9*8); //72, 9 tall and 8 wide     THISE IS WHERE WE TAKE THE DATA FROM
     for(int i = 0; i < 72; i++)
         data[i] = 0;
 
@@ -80,7 +80,7 @@ int main(int argc, char *argv[])
     }
 
     // create subarray type for global transfer
-    rmacxx::RMACXX_Subarray_t<int,GLOBAL_VIEW> sub({2,2},{9,8}); //7x6 = 42
+    rmacxx::RMACXX_Subarray_t<int,GLOBAL_VIEW> sub({2,2},{9,8}); //7x6 = 42     DEFINE SUBARRAY OF DATA TO TAKE DATA FROM
     //rmacxx::RMACXX_Subarray_t<int, GLOBAL_VIEW> sub({2,2}, {4,6});
 
     //window is inclusive
