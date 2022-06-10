@@ -116,7 +116,7 @@ struct RMACXX_Subarray_t<T, GLOBAL_VIEW>
     do { \
         sizes_.insert(sizes_.end(), sizes.begin(), sizes.end()); \
         starts_.insert(starts_.end(), starts.begin(), starts.end()); \
-        ptr_ = nullptr; \
+        ptr_ = nullptr; std::cout<<"we were here"<<std::endl; \
     } while(0)
  
 #define RMACXX_SUBARRAY_STORE_GLOBAL_1D(starts) \
@@ -133,6 +133,17 @@ struct RMACXX_Subarray_t<T, GLOBAL_VIEW>
     RMACXX_Subarray_t ( std::initializer_list<int> const& starts, 
             std::initializer_list<int> const& sizes )
     { RMACXX_SUBARRAY_STORE_GLOBAL(sizes, starts); }
+
+    /* TODO
+    RMACXX_Subarray_t ( std::initializer_list<int> const& starts, std::initializer_list<int> const& ends, bool whatever) { 
+        std::initializer_list<int> sizes;
+        for (int i = 0; i < starts.size(); i++) {
+            //sizes[i] = ends[i] - starts[i];
+            sizes_.insert(sizes.end(), ends.begin() - starts.begin(), ends.end() - starts.end());
+        }
+        RMACXX_SUBARRAY_STORE_GLOBAL(sizes, starts); 
+    }
+    */
     
     RMACXX_Subarray_t ( std::initializer_list<int> const& starts )
     { RMACXX_SUBARRAY_STORE_GLOBAL_1D( starts ); }
