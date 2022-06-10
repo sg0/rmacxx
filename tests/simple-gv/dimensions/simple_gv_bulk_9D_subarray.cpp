@@ -1,4 +1,5 @@
 #include "rmacxx.hpp"
+#include <cassert>
 
 int main(int argc, char *argv[])
 {
@@ -54,23 +55,23 @@ int main(int argc, char *argv[])
         data[i] = 0;
     }
     
-    for(int a = 1; a < 3; a++)
+    for(int a = 0; a < 2; a++)
     {
-        for(int b = 1; b < 3; b++)
+        for(int b = 0; b < 2; b++)
         {
-            for(int c = 1; c < 3; c++)
+            for(int c = 0; c < 2; c++)
             {
-                for(int d = 1; d < 3; d++)
+                for(int d = 0; d < 2; d++)
                 {
-                    for(int e = 1; e < 3; e++)
+                    for(int e = 0; e < 2; e++)
                     {
-                        for(int f = 1; f < 3; f++)
+                        for(int f = 0; f < 2; f++)
                         {
-                            for(int g = 1; g < 3; g++)
+                            for(int g = 0; g < 2; g++)
                             {
-                                for(int h = 1; h < 3; h++)
+                                for(int h = 0; h < 2; h++)
                                 {
-                                    for(int i = 1; i < 3; i++)
+                                    for(int i = 0; i < 2; i++)
                                     {
                                         data[(i + h*3 + g*9 + f*27 + e*81 + d*243 + c*729 + b*2187 + a*6561)] = 3; //range of 0 to 19682 = 3^9 - 1
                                     }
@@ -83,10 +84,8 @@ int main(int argc, char *argv[])
         }
     }
 
-    int temp = data[data.size() - 1];
-
     // create subarray type for global transfer     //starts            //sizes
-    rmacxx::RMACXX_Subarray_t<int,GLOBAL_VIEW> sub({0,0,0,0,0,0,0,0,0},{1,1,1,1,1,1,1,1,1}); //extract a 2-wide hypercube
+    rmacxx::RMACXX_Subarray_t<int,GLOBAL_VIEW> sub({0,0,0,0,0,0,0,0,0},{2,2,2,2,2,2,2,2,2}); //extract a 2-wide hypercube
     //rmacxx::RMACXX_Subarray_t<int, GLOBAL_VIEW> sub({2,2}, {4,6});
 
     //window is inclusive
@@ -94,31 +93,30 @@ int main(int argc, char *argv[])
 
     // put
     win({1,1,1,1,1,1,1,1,1},{2,2,2,2,2,2,2,2,2}) << sub(data.data()); //put the 2-wide hypercube subarray into the center of the 4-wide hypercube
-
-    int nums[512];
-    win({1,1,1,1,1,1,1,1,1},{2,2,2,2,2,2,2,2,2}) >> nums;
     
     win.flush();
     
     win.print("After put...");
 
-    win.barrier();
+    win.barrier(); //processes wait here at the barrier, .barrier() is a collective
     
     win.wfree();
     
-
     data.clear();
 
-    MPI_Finalize();
+    int nums[512];
+    win({1,1,1,1,1,1,1,1,1},{2,2,2,2,2,2,2,2,2}) >> nums;
 
-    std::cout<<temp<<std::endl;
+    MPI_Finalize();
 
     if (rank == 0) {
         bool all_threes = true;
         for (int i = 0; i < 512; i++) {
             all_threes = all_threes && nums[i] == 3;
+            std::cout<<nums[i];
         }
         assert(all_threes);
+        std::cout<<std::endl;
         std::cout<<"Pass"<<std::endl;
     }
 
