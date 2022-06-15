@@ -723,10 +723,13 @@ public:
     // for put/get in standard interface
     // ---------------------------------
     // Both l/h needs to be writable, as we update them...
-    // this means extra time will be incurred in calling std::vector
+    // this means extra time will be incurred in calling std::vector            HERE
     // ctor which takes an init_list
     inline WIN& operator()( std::initializer_list<int> const& l,  std::initializer_list<int> const& h, X )
     {
+        store_lo = l;
+        store_hi = h;
+
         lock();
 
         if ( ndims_ > 1 )
@@ -1686,13 +1689,46 @@ public:
     // ---------------------------------------------------
     void operator <<( RMACXX_Subarray_t<T, GLOBAL_VIEW> const& origin )
     {
+        //HERE
+        // check to make sure the size of the subarray matches up with the window
+        // store_lo and store_hi are inclusive coordinates on the Window
+
+        //std::vector<int> nlo, nhi;
+
+#ifdef ENDS
+        // if we're given inclusive coordinates
+        std::vector<int> nhi;
+        nhi.insert(nhi.end(), store_hi.begin(), store_hi.end());
+        if (origin.sizes_ != nhi) {
+            //failed check
+            std::cout << "Coordinates not equal" << std::endl;
+            abort();
+        }
+#else
+        //if we're given size
+        std::vector<int> nlo, nhi;
+        nlo.insert(nlo.end(), store_lo.begin(), store_lo.end());
+        nhi.insert(nhi.end(), store_hi.begin(), store_hi.end());
+
+        //take all the hi and lo values and convert them into sizes
+        std::vector<int> sizes(nhi.size());
+        for (int i = 0; i < nlo.size(); i++) {
+            sizes[i] = nhi[i] - nlo[i] + 1;
+        }
+        if (origin.sizes_ != sizes) {
+            //failed check
+            std::cout << "Coordinates not equal" << std::endl;
+            abort();
+        }
+#endif
+
         if ( winop_.op == MPI_OP_NULL )
             RMACXX_GLOBAL_BULK_XFER_NC(origin, RMACXX_BULK_PUT_GLOBAL);
         else
         {
             RMACXX_GLOBAL_BULK_XFER_NC(origin, RMACXX_BULK_ACC_GLOBAL);
             winop_ = Op();
-	}
+	    }
 
         if ( wcmpl_ == LOCAL_FLUSH )
             flush_local();
@@ -1707,11 +1743,14 @@ public:
     // --------------------------------------------------
     void operator >>( RMACXX_Subarray_t<T, GLOBAL_VIEW> const& origin )
     {
+        // check subarray and window sizes
+        //this.
+
         if ( is_fop_ )
         {
             RMACXX_GLOBAL_BULK_XFER_NC(origin, RMACXX_BULK_GACC_GLOBAL);
             is_fop_ = false;
-	}
+	    }
         else
             RMACXX_GLOBAL_BULK_XFER_NC(origin, RMACXX_BULK_GET_GLOBAL);
 
@@ -1918,6 +1957,11 @@ private:
 
     // stores data range per process
     std::vector<int> rlo_, rhi_;
+
+    // TEMPORARY THING HERE
+    std::initializer_list<int> store_lo;
+    std::initializer_list<int> store_hi;
+
 
     // stores previous value at
     // a particular offset, used
