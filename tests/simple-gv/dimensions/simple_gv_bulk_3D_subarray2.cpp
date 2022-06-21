@@ -54,25 +54,42 @@ int main(int argc, char *argv[])
     win.print("Current...");
 
     // local buffer
-    int size = 3 * 3 * 3; // 3-wide 3-dimensional cube
+    int size = 10 * 10 * 10; // 3-wide 3-dimensional cube
     std::vector<int> data(size); //3^3
-    for(int i = 0; i < 27; i++) {
+    for(int i = 0; i < 1000; i++) {
         data[i] = 0;
     }
     
-    /*
+    
     //TEMP
-    for (int i = 0; i < 27; i++) {
+    for (int i = 0; i < 1000; i++) {
         data[i] = i + 100;
     }
-    */
+    
+
+    int in_vol = 2 * 3 * 3;
 
     
-    for (int i = 0; i < 8; i++) { //volume of shape we want to extract as the for-loop counter, cube is 2x2x2
-        data[i + 1 + 2 + 4] = 3; // 3x9x7 3x3x3
-        //   _  2^0 2^1 2^2
-        //iterate from []
-        // i + 7
+    //inner is 3x3x3
+    for (int i = 0; i < in_vol; i++) {
+       data[i + 4] = 3; //WHAT
+             
+        //   _  2^0 2^1 3^2
+        // i + 10
+        // i + 2 2 3
+
+
+        // INPUTTING STARTING AT 1,1,1
+        //2*2*2 -> i + 7    1+2+2+2
+        //2*2*3 -> i + 10   i + 2^0 + 2 * 1 + 3 * 2
+        //2*3*3 -> i + 13
+        //3*3*3 -> i + 13 
+
+        // INPUTTING STARTING AT 0,1,1
+        //2*2*2 -> i + 3
+        //2*2*3 -> i + 4
+        //2*3*3 -> i + 4
+        //3*3*3 -> i + 4
     }
     
 
@@ -95,7 +112,7 @@ int main(int argc, char *argv[])
     int temp = data[data.size() - 1];
 
     // create subarray type for global transfer    //starts //sizes
-    rmacxx::RMACXX_Subarray_t<int,GLOBAL_VIEW> sub({1,1,1},{2,2,2}); //extract a 2-wide hypercube
+    rmacxx::RMACXX_Subarray_t<int,GLOBAL_VIEW> sub({0,1,1},{2,3,3}); //extract a 2-wide hypercube
     //  i,j,k
 
     // DIMS REFERS TO THE AREA EXTRACTED BY THE SUBARRAY, or something like that
@@ -110,13 +127,15 @@ int main(int argc, char *argv[])
     //temp_vec << sub(data.data()); //better
     //don't create an intermediate object, and make sure the c++ interface we use isn't doing that either
 
+    std::cout<<"about to put"<<std::endl;
+
     // put
-    win({1,1,1},{2,2,2}) << sub(data.data()); //put the 2-wide hypercube subarray into the center of the 4-wide hypercube
+    win({0,1,1},{1,3,3}) << sub(data.data()); //put the 2-wide hypercube subarray into the center of the 4-wide hypercube
 
     std::cout<<"reached here"<<std::endl;
 
-    int nums[8];
-    win({1,1,1},{2,2,2}) >> nums;
+    int nums[in_vol];
+    win({0,1,1},{1,3,3}) >> nums;
     
     //come up with a way to check sizes and bounds, and throw an error if numbers don't match up, CONCEPTS
     
@@ -137,7 +156,7 @@ int main(int argc, char *argv[])
 
     if (rank == 0) {
         bool all_threes = true;
-        for (int i = 0; i < 8; i++) {
+        for (int i = 0; i < in_vol; i++) {
             all_threes = all_threes && nums[i] == 3;
         }
         assert(all_threes);

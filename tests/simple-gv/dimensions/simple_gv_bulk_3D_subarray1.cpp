@@ -53,44 +53,31 @@ int main(int argc, char *argv[])
     // print shape
     win.print("Current...");
 
+    
+    //we want to extract a 2*3*4
+    std::vector<int> extract_dims(dimensions), extract_offset(dimensions);
+    extract_dims[0] = 2; extract_dims[1] = 3; extract_dims[2] = 4;
+    //extract_offset
+
     // local buffer
-    int size = 3 * 3 * 3; // 3-wide 3-dimensional cube
-    std::vector<int> data(size); //3^3
-    for(int i = 0; i < 27; i++) {
+    int size = 5 * 9 * 6; //size of the shape we want to extract from
+    std::vector<int> data(size);
+    for(int i = 0; i < size; i++) {
         data[i] = 0;
     }
     
-    /*
-    //TEMP
-    for (int i = 0; i < 27; i++) {
-        data[i] = i + 100;
-    }
-    */
-
-    
     for (int i = 0; i < 8; i++) { //volume of shape we want to extract as the for-loop counter, cube is 2x2x2
-        data[i + 1 + 2 + 4] = 3; // 3x9x7 3x3x3
+        data[i + 1 + 2 + 4] = 3; // 3x9x7
         //   _  2^0 2^1 2^2
-        //iterate from []
-        // i + 7
     }
-    
-
-    /*
-    //we want to extract a 2*2*2
-    std::vector<int> extract_dims(dimensions), extract_offset(dimensions);
-    extract_dims[0] = 2; extract_dims[1] = 2; extract_dims[2] = 2;
 
     for(int i = 0; i < extract_dims[0]; i++) {
         for(int j = 0; j < extract_dims[1]; j++){
             for(int k = 0; k < extract_dims[2]; k++){
-                data[i*extract_dims[0]*extract_dims[1] + j*extract_dims[1] + k] = 3;
+                
             }
         }
     }
-    */
-
-
 
     int temp = data[data.size() - 1];
 
@@ -145,4 +132,29 @@ int main(int argc, char *argv[])
     }
 
     return 0;
+}
+
+/*
+// local_buffer is the target we're trying to fill, extract_dims is the size of the shape we want to extract, 
+// and dims_index should be an empty vector
+std::vector<int> fill_local_buffer(std::vector<int> local_buffer, std::vector<int> extract_dims, std::vector<int> dims_index) {
+    std::vector<int> recurse_dims(extract_dims.begin() + 1, extract_dims.end());
+    for (int i = 0; i < extract_dims[0]; i++) {
+        dims_index.insert()
+        fill_local_buffer(local_buffer, recurse_dims, dims_index);
+    }
+
+
+}
+*/
+
+//std::vector<int> fill_local_buffer(std::vector<int> local_buffer, )
+
+4x9x3x5
+
+
+std::vector<int> fill_local_buffer(std::vector<int> local_buffer, std::vector<int> extract_dims, int addend) {
+
+    new_addend = addend + calculated_value
+
 }
