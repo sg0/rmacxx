@@ -18,22 +18,22 @@ int main(int argc, char *argv[])
     if (rank == 0) // process #0
     { 
         lo[0] = 0; lo[1] = 0; lo[2] = 0;
-        hi[0] = 1; hi[1] = 1; hi[2] = 3;
+        hi[0] = 3; hi[1] = 3; hi[2] = 7;
     }
     else if (rank == 1) // process #1
     {
-        lo[0] = 2; lo[1] = 0; lo[2] = 0;
-        hi[0] = 3; hi[1] = 1; hi[2] = 3;
+        lo[0] = 4; lo[1] = 0; lo[2] = 0;
+        hi[0] = 7; hi[1] = 3; hi[2] = 7;
     }
     else if (rank == 2) // process #2
     {
-        lo[0] = 0; lo[1] = 2; lo[2] = 0;
-        hi[0] = 1; hi[1] = 3; hi[2] = 3;
+        lo[0] = 0; lo[1] = 4; lo[2] = 0;
+        hi[0] = 3; hi[1] = 7; hi[2] = 7;
     }
     else // process #3
     {
-        lo[0] = 2; lo[1] = 2; lo[2] = 0;
-        hi[0] = 3; hi[1] = 3; hi[2] = 3;
+        lo[0] = 4; lo[1] = 4; lo[2] = 0;
+        hi[0] = 7; hi[1] = 7; hi[2] = 7;
     }   
 
     rmacxx::Window<int,GLOBAL_VIEW> win(lo, hi); //window is a 4-wide hypercube
@@ -67,12 +67,12 @@ int main(int argc, char *argv[])
     }
     
 
-    int in_vol = 2 * 3 * 3;
+    int in_vol = 3 * 6 * 7;
 
     
     //inner is 3x3x3
     for (int i = 0; i < in_vol; i++) {
-       data[i + 4] = 3; //WHAT
+       data[i + 58] = 3; //WHAT
              
         //   _  2^0 2^1 3^2
         // i + 10
@@ -83,13 +83,84 @@ int main(int argc, char *argv[])
         //2*2*2 -> i + 7    1+2+2+2
         //2*2*3 -> i + 10   i + 2^0 + 2 * 1 + 3 * 2
         //2*3*3 -> i + 13
-        //3*3*3 -> i + 13 
+
+        //3*3*3 -> i + 13
 
         // INPUTTING STARTING AT 0,1,1
         //2*2*2 -> i + 3
         //2*2*3 -> i + 4
         //2*3*3 -> i + 4
+
         //3*3*3 -> i + 4
+
+        // INPUTTING STARTING AT 5,5,5
+        //2*2*2 -> i + 35   dim z = 2; dim y = 2; dim x = 2; i*dimX*dimY + j*dimY + k
+        //2*3*2 -> i + 45
+        //2*3*3 -> i + 65
+        
+        //3*2*2 -> i + 35
+        //3*3*2 -> i + 45
+        //3*3*3 -> i + 65
+        //3*3*4 -> i + 85
+        //3*4*3 -> i + 80
+        //3*4*4 -> i + 105
+
+
+        //x*2*2 -> 35   5+5+5 + 2*5 + 2*5 = 35
+        //x*3*2 -> 45   5+5+5 + 3*5 + 2*5
+        //x*2*3 -> 50   5+5+5 + 
+        //x*4*2 -> 55   5+5+5 + 4*5 + 2*5 = 
+        //x*3*3 -> 65
+        //x*2*4 -> 65
+        //x*4*3 -> 80
+        //x*3*4 -> 85
+        //x*4*4 -> 105
+
+        // INPUTTING STARTING AT 4,5,6
+        //x*2*2 -> 32
+        //x*3*2 -> 40
+        //x*2*3 -> 45
+
+        // INPUTTING STARTING AT 4,5,1
+        //x*2*3 -> 40
+
+        // INPUTTING STARTING AT 4,5,2
+        //x*2*3 -> 41   2+2*4*2 = 18 + c + _
+
+        //(x,y,z) (a,b) -> val
+        //(0,1,0) (1,5) -> 5
+        //(0,1,0) (1,6) -> 6
+        //(0,1,0) (1,7) -> 7
+
+        //(0,2,0) (1,7) -> 14
+        //(0,2,1) (1,7) -> 15
+        //(0,2,2) (1,7) -> 16
+        //(0,2,2) (3,7) -> 16
+
+        //(1,2,2) (1,7) -> 23   bx + az + by
+        //(2,2,2) (1,7) -> 30   bx + az + by
+        //(2,2,2) (6,7) -> 100
+        //(1,2,2) (6,7) -> 58
+        //(0,2,2) (6,7) -> 16   abx + z + by 
+
+        // STARTS AT x,y,z and of size _,a,b and unknown constant c
+        // c + z + by + abx       + _2xa_
+
+        // i*dimX*dimY + j*dimY + k
+        // x*a*b + y*b + z
+        
+        // x = i
+        // y = j
+        // z = k
+        // a = dimX
+        // b = dimY
+
+        //(i,j,k) is the starting position
+        //(dimX,dimY,dimZ) is the size of the inner volume
+        //// i*dimY*dimZ + j*dimZ + k = offset from start of buffer, and read for length of dimX*dimY*dimZ
+
+
+
     }
     
 
@@ -112,7 +183,7 @@ int main(int argc, char *argv[])
     int temp = data[data.size() - 1];
 
     // create subarray type for global transfer    //starts //sizes
-    rmacxx::RMACXX_Subarray_t<int,GLOBAL_VIEW> sub({0,1,1},{2,3,3}); //extract a 2-wide hypercube
+    rmacxx::RMACXX_Subarray_t<int,GLOBAL_VIEW> sub({1,2,2},{3,6,7}); //extract a 2-wide hypercube
     //  i,j,k
 
     // DIMS REFERS TO THE AREA EXTRACTED BY THE SUBARRAY, or something like that
@@ -130,12 +201,12 @@ int main(int argc, char *argv[])
     std::cout<<"about to put"<<std::endl;
 
     // put
-    win({0,1,1},{1,3,3}) << sub(data.data()); //put the 2-wide hypercube subarray into the center of the 4-wide hypercube
+    win({1,1,1},{3,6,7}) << sub(data.data()); //put the 2-wide hypercube subarray into the center of the 4-wide hypercube
 
     std::cout<<"reached here"<<std::endl;
 
     int nums[in_vol];
-    win({0,1,1},{1,3,3}) >> nums;
+    win({1,1,1},{3,6,7}) >> nums;
     
     //come up with a way to check sizes and bounds, and throw an error if numbers don't match up, CONCEPTS
     
