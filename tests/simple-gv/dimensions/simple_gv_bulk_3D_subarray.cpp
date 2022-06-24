@@ -5,16 +5,22 @@
 
 int main(int argc, char *argv[])
 {
-    int rank;
+    // USER CONFIGURABLE VALUES
+    int dimensions = 3; // number of dimensions
+    std::vector<int> local_buffer_dims = {3,3,3}; // size of each dimension in the local_buffer     
+    std::vector<int> transfer_dims = {2,2,2}; // size of each dimension in the transfer                 (dimX,dimY,dimZ)
+    std::vector<int> extract_offset = {1,1,1}; // ofset when we take out from local_buffer              (i,j,k)
+    std::vector<int> place_offset = {1,1,1}; // offset when we put into window
 
+   
+    // create processes
+    int rank;
     MPI_Init( &argc, &argv );
     MPI_Comm_rank( MPI_COMM_WORLD, &rank );
-    
-    int dimensions = 3; // number of dimensions
 
-    std::vector<int> lo(dimensions), hi(dimensions);
 
-    // create window
+    // USER CONFIGURABLE VALUES
+    std::vector<int> lo(dimensions), hi(dimensions); // size of each process, inclusive coordinates
     if (rank == 0) // process #0
     { 
         lo[0] = 0; lo[1] = 0; lo[2] = 0;
@@ -36,7 +42,8 @@ int main(int argc, char *argv[])
         hi[0] = 3; hi[1] = 3; hi[2] = 3;
     }   
 
-    rmacxx::Window<int,GLOBAL_VIEW> win(lo, hi); //window is a 4-wide hypercube
+    // create Window
+    rmacxx::Window<int,GLOBAL_VIEW> win(lo, hi);
 
     if (win.size() != 4)
     {
@@ -53,72 +60,56 @@ int main(int argc, char *argv[])
     // print shape
     win.print("Current...");
 
-    // local buffer
-    int size = 3 * 3 * 3; // 3-wide 3-dimensional cube
-    std::vector<int> data(size); //3^3
-    for(int i = 0; i < 27; i++) {
-        data[i] = 0;
+    // generate the sizes of the local_buffer and the transfer
+    int local_size = 1, transfer_size = 1;
+    for (int i = 0; i < local_buffer_dims.size(); i++) {
+        local_size *= local_buffer_dims[i];
+    }
+    for (int i = 0; i < transfer_dims.size(); i++) {
+        transfer_size *= transfer_dims[i];
+    }
+
+    // fill the local_buffer with 0s
+    std::vector<int> local_buffer(local_size);
+    for(int i = 0; i < local_size; i++) {
+        local_buffer[i] = 0;
     }
     
-    /*
-    //TEMP
-    for (int i = 0; i < 27; i++) {
-        data[i] = i + 100;
-    }
-    */
-
-    
-    for (int i = 0; i < 8; i++) { //volume of shape we want to extract as the for-loop counter, cube is 2x2x2
-        data[i + 1 + 2 + 4] = 3; // 3x9x7 3x3x3
-        //   _  2^0 2^1 2^2
-        //iterate from []
-        // i + 7
-    }
-    
-
-    /*
-    //we want to extract a 2*2*2
-    std::vector<int> extract_dims(dimensions), extract_offset(dimensions);
-    extract_dims[0] = 2; extract_dims[1] = 2; extract_dims[2] = 2;
-
-    for(int i = 0; i < extract_dims[0]; i++) {
-        for(int j = 0; j < extract_dims[1]; j++){
-            for(int k = 0; k < extract_dims[2]; k++){
-                data[i*extract_dims[0]*extract_dims[1] + j*extract_dims[1] + k] = 3;
-            }
+    // fill the part of the local_buffer that will be extracted with 3s
+    int formula_result = 0; // generate first index of the transfer within the local_buffer 
+    int dimensions_product;
+    for (int i = 0; i < dimensions; i++) { // run once per dimension
+        dimensions_product = 1;
+        for (int j = i + 1; j < dimensions; j++) { // for each dimension excluding this one and all before
+            dimensions_product *= transfer_dims[j];
         }
+        formula_result += extract_offset[i] * dimensions_product;
     }
-    */
 
+    for (int i = 0; i < transfer_size; i++) {
+        local_buffer[i + formula_result] = 3;
+    }
 
-
-    int temp = data[data.size() - 1];
-
-    // create subarray type for global transfer    //starts //sizes
-    rmacxx::RMACXX_Subarray_t<int,GLOBAL_VIEW> sub({1,1,1},{2,2,2}); //extract a 2-wide hypercube
-    //  i,j,k
-
-    // DIMS REFERS TO THE AREA EXTRACTED BY THE SUBARRAY, or something like that
-    // i*dims[0]*dims[1] + j*dims[1] + k
-    // NOTE dims of the Subarray sizes
-
-    /*
-    subarray multiplies the size dimensions and takes that long of a *contiguous* chunk of data
-    the start dimensions are 
-    */
-
-    //temp_vec << sub(data.data()); //better
-    //don't create an intermediate object, and make sure the c++ interface we use isn't doing that either
+    // create subarray type for global transfer    //starts             //sizes
+    rmacxx::RMACXX_Subarray_t<int,GLOBAL_VIEW> sub({extract_offset[0], extract_offset[1], extract_offset[2]},{transfer_dims[0],transfer_dims[1],transfer_dims[2]});
 
     // put
-    win({1,1,1},{2,2,2}) << sub(data.data()); //put the 2-wide hypercube subarray into the center of the 4-wide hypercube
+    std::cout<<"waddup"<<std::endl;
+
+    win({place_offset[0], place_offset[1], place_offset[2]},{
+            place_offset[0] + transfer_dims[0] - 1,
+            place_offset[1] + transfer_dims[1] - 1,
+            place_offset[2] + transfer_dims[2] - 1
+        }) << sub(local_buffer.data());
 
     std::cout<<"reached here"<<std::endl;
 
-    int nums[8];
-    win({1,1,1},{2,2,2}) >> nums;
-    
-    //come up with a way to check sizes and bounds, and throw an error if numbers don't match up, CONCEPTS
+    int nums[transfer_size];
+    win({place_offset[0], place_offset[1], place_offset[2]},{
+            place_offset[0] + transfer_dims[0] - 1,
+            place_offset[1] + transfer_dims[1] - 1,
+            place_offset[2] + transfer_dims[2] - 1
+        }) >> nums;
     
     win.flush();
     
@@ -129,15 +120,14 @@ int main(int argc, char *argv[])
     win.wfree();
     
 
-    data.clear();
+    local_buffer.clear();
 
     MPI_Finalize();
 
-    std::cout<<temp<<std::endl;
-
+    // run a quick assertion test
     if (rank == 0) {
         bool all_threes = true;
-        for (int i = 0; i < 8; i++) {
+        for (int i = 0; i < transfer_size; i++) {
             all_threes = all_threes && nums[i] == 3;
         }
         assert(all_threes);

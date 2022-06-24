@@ -223,7 +223,7 @@ public:
         lstarts_.reserve(ndims_); \
     } while(0)
 
-    Window( std::vector<int> const& lo, std::vector<int> const& hi )
+    Window( std::vector<int> const& lo, std::vector<int> const& hi ) //HERE
     {
         comm_ = MPI_COMM_WORLD;
         is_comm_dupd_ = false;
@@ -727,6 +727,21 @@ public:
     // ctor which takes an init_list
     inline WIN& operator()( std::initializer_list<int> const& l,  std::initializer_list<int> const& h, X )
     {
+        /*
+        // run window check here
+        std::vector<int> lv(l.size()), hv(h.size());
+        lv.insert(lv.end(), l.begin(), l.end());
+        hv.insert(hv.end(), h.begin(), h.end());
+
+        for (int i = 0; i < l.size(); i++){
+            if (lv[i] < lo_[i] || hv[i] > hi_[i] ) {
+                // failed check
+                std::cout << "Accessing out of the bounds of the window" << std::endl;
+                abort();
+            }
+        }
+        */
+
         store_lo = l;
         store_hi = h;
 

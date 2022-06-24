@@ -72,7 +72,7 @@ int main(int argc, char *argv[])
     
     //inner is 3x3x3
     for (int i = 0; i < in_vol; i++) {
-       data[i + 58] = 3; //WHAT
+       data[i + 0] = 3; //WHAT
              
         //   _  2^0 2^1 3^2
         // i + 10
@@ -155,9 +155,12 @@ int main(int argc, char *argv[])
         // a = dimX
         // b = dimY
 
+
+        // THE FORMULA
         //(i,j,k) is the starting position
         //(dimX,dimY,dimZ) is the size of the inner volume
         //// i*dimY*dimZ + j*dimZ + k = offset from start of buffer, and read for length of dimX*dimY*dimZ
+        //        ->  (3D) i*dimY*dimZ + j*dimZ + k; (4D) i*dimY*dimZ*dimA + j*dimZ*dimA + k*dimA + l
 
 
 
@@ -183,7 +186,7 @@ int main(int argc, char *argv[])
     int temp = data[data.size() - 1];
 
     // create subarray type for global transfer    //starts //sizes
-    rmacxx::RMACXX_Subarray_t<int,GLOBAL_VIEW> sub({1,2,2},{3,6,7}); //extract a 2-wide hypercube
+    rmacxx::RMACXX_Subarray_t<int,GLOBAL_VIEW> sub({0,0,0},{3,6,7}); //extract a 2-wide hypercube
     //  i,j,k
 
     // DIMS REFERS TO THE AREA EXTRACTED BY THE SUBARRAY, or something like that
@@ -201,12 +204,12 @@ int main(int argc, char *argv[])
     std::cout<<"about to put"<<std::endl;
 
     // put
-    win({1,1,1},{3,6,7}) << sub(data.data()); //put the 2-wide hypercube subarray into the center of the 4-wide hypercube
+    win({0,0,1},{2,5,7}) << sub(data.data()); //put the 2-wide hypercube subarray into the center of the 4-wide hypercube
 
     std::cout<<"reached here"<<std::endl;
 
     int nums[in_vol];
-    win({1,1,1},{3,6,7}) >> nums;
+    win({0,0,1},{2,5,7}) >> nums;
     
     //come up with a way to check sizes and bounds, and throw an error if numbers don't match up, CONCEPTS
     
@@ -225,13 +228,16 @@ int main(int argc, char *argv[])
 
     std::cout<<temp<<std::endl;
 
+    //std::string temporary = "";
+
     if (rank == 0) {
         bool all_threes = true;
         for (int i = 0; i < in_vol; i++) {
             all_threes = all_threes && nums[i] == 3;
+            std::cout<<nums[i]<<std::endl;
         }
         assert(all_threes);
-        std::cout<<"Pass"<<std::endl;
+        //std::cout<<"Pass"<<std::endl;
     }
 
     return 0;
