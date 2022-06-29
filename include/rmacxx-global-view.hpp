@@ -1702,6 +1702,7 @@ public:
 
     // overload istream op for bulk noncontiguous `put/acc
     // ---------------------------------------------------
+    
     void operator <<( RMACXX_Subarray_t<T, GLOBAL_VIEW> const& origin )
     {
         //HERE
