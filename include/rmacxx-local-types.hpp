@@ -132,7 +132,7 @@ struct RMACXX_Subarray_t<T, GLOBAL_VIEW>
         ptr_ = nullptr; \
     } while(0)
 
-#ifdef ENDS // pass the constructors into the macro, then perform conversions
+#ifdef ENDS // pass the starts and ends constructors into the macro, then perform conversions HERE
     RMACXX_Subarray_t ( std::initializer_list<int> const& starts, 
             std::initializer_list<int> const& ends ) 
     {
@@ -141,7 +141,7 @@ struct RMACXX_Subarray_t<T, GLOBAL_VIEW>
             sizes_[i] = sizes_[i] - starts_[i] + 1; // we do +1 because ends is inclusive
         }
     }
-#else // pass the constructors into the macro
+#else // pass the starts and sizes constructors into the macro, default
     RMACXX_Subarray_t ( std::initializer_list<int> const& starts, 
             std::initializer_list<int> const& sizes )
     { RMACXX_SUBARRAY_STORE_GLOBAL(sizes, starts); }
