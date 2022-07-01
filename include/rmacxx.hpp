@@ -311,7 +311,7 @@ struct RMACXX_Subarray_t {};
 #include "rmacxx-global-view.hpp"
 #include "rmacxx-expr-elem.hpp"
 #include "rmacxx-expr-bulk.hpp"
-#include "concepts.hpp"
+// #include "concepts.hpp"
 
 } // namespace
 #endif //RMACXX_HPP
