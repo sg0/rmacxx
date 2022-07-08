@@ -742,8 +742,10 @@ public:
         }
         */
 
+#ifdef DEBUG_CHECK_LIMITS
         store_lo = l;
         store_hi = h;
+#endif
 
         lock();
 
@@ -1711,15 +1713,17 @@ public:
 
         //std::vector<int> nlo, nhi;
 
-#ifdef ENDS
+#ifdef RMACXX_SUBARRAY_USE_END_COORDINATES
         // if we're given inclusive coordinates
         std::vector<int> nhi;
         nhi.insert(nhi.end(), store_hi.begin(), store_hi.end());
+#ifdef DEBUG_CHECK_LIMITS
         if (origin.sizes_ != nhi) {
             //failed check
             std::cout << "Coordinates not equal" << std::endl;
             abort();
         }
+#endif
 #else
         //if we're given size
         std::vector<int> nlo, nhi;
@@ -1731,11 +1735,13 @@ public:
         for (int i = 0; i < nlo.size(); i++) {
             sizes[i] = nhi[i] - nlo[i] + 1;
         }
+#ifdef DEBUG_CHECK_LIMITS
         if (origin.sizes_ != sizes) {
             //failed check
             std::cout << "Coordinates not equal" << std::endl;
             abort();
         }
+#endif
 #endif
 
         if ( winop_.op == MPI_OP_NULL )

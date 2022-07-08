@@ -1,4 +1,20 @@
 #include "rmacxx.hpp"
+#include <concepts>
+#include <ranges>
+
+// data type is contiguous
+template<class T> 
+inline constexpr bool is_contig = static_assert(std::contiguous_iterator<T>) || static_assert(std::ranges::contiguous_range<T>);
+
+//template <typename T>
+//concept is_contig = std::contiguous_iterator<T>;
+
+// only positive coordinates
+
+// user is using global and local view correctly
+
+
+
 
 // ensure we pass in valid arguments into the << operator
 template<class T, class W, class S>

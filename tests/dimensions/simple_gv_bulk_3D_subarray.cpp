@@ -1,7 +1,7 @@
 #include "rmacxx.hpp"
 #include <math.h>
 
-//#define ENDS 0
+//THIS TEST MUST NOT USE THE RMACXX_SUBARRAY_USE_END_COORDINATES FLAG
 
 int main(int argc, char *argv[])
 {

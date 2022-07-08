@@ -1207,7 +1207,7 @@ public:
     // put/get
     // overload istream op for bulk `put/acc
     // -------------------------------------
-    void operator <<( const T* origin_addr )
+    void operator <<( const T* origin_addr ) //HERE
     {
         if ( winop_.op == MPI_OP_NULL )
             RMACXX_BULK_PUT( origin_addr );
@@ -1235,7 +1235,7 @@ public:
 
     // overload istream op for bulk noncontiguous `put/acc
     // ---------------------------------------------------
-    void operator <<( RMACXX_Subarray_t<T, LOCAL_VIEW>& origin )
+    void operator <<( RMACXX_Subarray_t<T, LOCAL_VIEW>& origin ) //HERE
     {
         if ( winop_.op == MPI_OP_NULL )
             RMACXX_BULK_PUT_NC( origin );

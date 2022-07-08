@@ -132,7 +132,7 @@ struct RMACXX_Subarray_t<T, GLOBAL_VIEW>
         ptr_ = nullptr; \
     } while(0)
 
-#ifdef ENDS // pass the starts and ends constructors into the macro, then perform conversions HERE
+#ifdef RMACXX_SUBARRAY_USE_END_COORDINATES // pass the starts and ends constructors into the macro, then perform conversions HERE
     RMACXX_Subarray_t ( std::initializer_list<int> const& starts, 
             std::initializer_list<int> const& ends ) 
     {

@@ -104,7 +104,7 @@ int main(int argc, char *argv[])
         local_buffer[i + formula_result] = 3;
     }
 
-    // create subarray type for global transfer    //starts             //sizes
+    // create subarray type for global transfer    //starts             //ends
     rmacxx::RMACXX_Subarray_t<int,GLOBAL_VIEW> sub(extract_starts,extract_ends);
 
     // put
