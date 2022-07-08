@@ -10,7 +10,7 @@ int main(int argc, char *argv[])
 
 	int num1, num2, num3, num4, num5;
 
-    rmacxx::Window<int, LOCAL_VIEW> win({10,10});
+    rmacxx::Window<int, GLOBAL_VIEW> win({10,10});
     win.fill(1);
 
     if (win.rank() == 0) {
