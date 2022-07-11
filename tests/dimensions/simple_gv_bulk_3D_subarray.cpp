@@ -17,6 +17,7 @@ int main(int argc, char *argv[])
     int rank;
     MPI_Init( &argc, &argv );
     MPI_Comm_rank( MPI_COMM_WORLD, &rank );
+    double t0 = MPI_Wtime();
 
 
     // USER CONFIGURABLE VALUES
@@ -112,15 +113,14 @@ int main(int argc, char *argv[])
         }) >> nums;
     
     win.flush();
-    
     win.print("After put...");
-
     win.barrier();
-    
     win.wfree();
-    
 
     local_buffer.clear();
+
+    double t1 = MPI_Wtime();
+    std::cout<<"Time elapsed: "<<t1 - t0<<std::endl;
 
     MPI_Finalize();
 

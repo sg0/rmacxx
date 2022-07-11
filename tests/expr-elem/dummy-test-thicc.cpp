@@ -7,6 +7,7 @@ int main(int argc, char *argv[])
 {
 
 	MPI_Init(&argc, &argv);
+    double t0 = MPI_Wtime();
 
 	int num1, num2, num3, num4, num5;
 
@@ -122,6 +123,9 @@ int main(int argc, char *argv[])
     win.print("After put...");
 
     win.wfree();
+
+    double t1 = MPI_Wtime();
+    std::cout<<"Time elapsed: "<<t1 - t0<<std::endl;
 
 	MPI_Finalize();
 
