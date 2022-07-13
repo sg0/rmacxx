@@ -16,51 +16,53 @@ int main(int argc, char *argv[])
     if (rank == 0) // process #0
     { 
         lo[0] = 0; lo[1] = 0; lo[2] = 0;
-        hi[0] = 9; hi[1] = 9; hi[2] = 9;
+        hi[0] = 5; hi[1] = 5; hi[2] = 9;
     }
     else if (rank == 1) // process #1
     {
-        lo[0] = 10; lo[1] = 0; lo[2] = 0;
-        hi[0] = 19; hi[1] = 9; hi[2] = 9;
+        lo[0] = 6; lo[1] = 0; lo[2] = 0;
+        hi[0] = 9; hi[1] = 5; hi[2] = 9;
     }
     else if (rank == 2) // process #2
     {
-        lo[0] = 0; lo[1] = 10; lo[2] = 0;
-        hi[0] = 9; hi[1] = 19; hi[2] = 9;
+        lo[0] = 0; lo[1] = 6; lo[2] = 0;
+        hi[0] = 2; hi[1] = 9; hi[2] = 9;
     }
     else // process #3
     {
-        lo[0] = 10; lo[1] = 10; lo[2] = 0;
-        hi[0] = 19; hi[1] = 19; hi[2] = 9;
+        lo[0] = 3; lo[1] = 6; lo[2] = 0;
+        hi[0] = 9; hi[1] = 9; hi[2] = 9;
     } 
 
     rmacxx::Window<int, GLOBAL_VIEW> win(lo, hi);
     win.fill(1);
 
-    if (win.rank() == 0) {
-        std::vector<int> buff(4*4*8);
+    if (rank == 0) {
+        std::vector<int> buff(4*2*8);
         std::fill(buff.begin(), buff.end(), 3);
-        win({6,6,1},{9,9,8}) << buff.data();
-    } else if (win.rank() == 1) {
-        std::vector<int> buff(6*4*8);
+        win({2,4,1},{5,5,8}) << buff.data();
+    } else if (rank == 1) {
+        std::vector<int> buff(2*2*8);
         std::fill(buff.begin(), buff.end(), 3);
-        win({10,6,1},{15,9,8}) << buff.data();
-    } else if (win.rank() == 2) {
-        std::vector<int> buff(4*5*8);
+        win({6,4,1},{7,5,8}) << buff.data();
+    } else if (rank == 2) {
+        std::vector<int> buff(1*3*8);
         std::fill(buff.begin(), buff.end(), 3);
-        win({6,10,1},{9,14,8}) << buff.data();
-    } else if (win.rank() == 3) {
-        std::vector<int> buff(6*5*8);
+        win({2,6,1},{2,8,8}) << buff.data();
+    } else if (rank == 3) {
+        std::vector<int> buff(5*3*8);
         std::fill(buff.begin(), buff.end(), 3);
-        win({10,10,1},{15,14,8}) << buff.data();
+        win({3,6,1},{7,8,8}) << buff.data();
     }
 
     win.flush();
 
     double t1 = MPI_Wtime();
 
-    int nums[720];
-    win({6,6,1},{15,14,8}) >> nums;
+    win.barrier();
+
+    int nums[240];
+    win({2,4,1},{7,8,8}) >> nums;
     
     win.print("After put...");
     win.wfree();
@@ -72,7 +74,7 @@ int main(int argc, char *argv[])
     // run a quick assertion test
     if (rank == 0) {
         bool all_threes = true;
-        for (int i = 0; i < 720; i++) {
+        for (int i = 0; i < 240; i++) {
             all_threes = all_threes && nums[i] == 3;
         }
         assert(all_threes);
