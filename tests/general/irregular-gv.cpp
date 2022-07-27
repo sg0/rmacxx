@@ -2,6 +2,7 @@
 #include <list>
 
 #include <cassert>
+#include <unistd.h>
 
 int main(int argc, char *argv[])
 {
@@ -32,9 +33,9 @@ int main(int argc, char *argv[])
     {
         lo[0] = 3; lo[1] = 6; lo[2] = 0;
         hi[0] = 9; hi[1] = 9; hi[2] = 9;
-    } 
+    }
 
-    rmacxx::Window<int, GLOBAL_VIEW> win(lo, hi);
+    rmacxx::Window<int, GLOBAL_VIEW> win(lo, hi); //this is a barrier for all the processes
     win.fill(1);
 
     if (rank == 0) {
