@@ -19,6 +19,10 @@ public:
     // TODO FIXME removed cart_comm ctor for now due to some bugs
     // shall bring it back soon after clean up
 
+    // stores all the lo's and hi's, packaged together for each process
+    std::vector<std::vector<int>> los;
+    std::vector<std::vector<int>> his;
+
 #define GWINIT_COMMON_RANGE(lo, hi) \
     do { \
         /* calculate dims */ \
@@ -202,11 +206,23 @@ public:
         lstarts_.reserve(ndims_); \
     } while(0)
 
-    Window( std::vector<int> const& lo, std::vector<int> const& hi ) //HERE
+    Window( std::vector<int> const& lo, std::vector<int> const& hi ) //HERE, constructor for window
     {
         comm_ = MPI_COMM_WORLD;
         is_comm_dupd_ = false;
         wkind_ = ALLOC;
+
+#ifdef DEBUG_CHECK_GAPS //checks gaps where we want to place, all spaces should be allocated to a process
+        std::vector<int> this_lo(lo.size()), this_hi(lo.size());
+        for (int i = 0; i < lo.size(); i++) {
+            //std::cout<<"BAM: "<<lo[i]<<" "<<hi[i]<<std::endl;
+            this_lo[i] = lo[i];
+            this_hi[i] = hi[i];
+        }
+        los.push_back(this_lo);
+        his.push_back(this_hi);
+
+#endif
         
         GWINIT_COMMON_RANGE( lo, hi );
 
@@ -225,7 +241,17 @@ public:
                           sizeof( T ), winfo_, comm_, &base, &win_ );
         MPI_Win_lock_all( MPI_MODE_NOCHECK, win_ );
         iswinlocked_ = true;
-	MPI_Barrier( comm_ );
+	    MPI_Barrier( comm_ );
+        //by this point, all the processes have submitted their coordinates
+        std::cout<<"los size: "<<los.size()<<std::endl;
+        std::cout<<"los"<<std::endl;
+        for (int i = 0; i < los[0].size(); i++) {
+            std::cout<<los[0][i]<<std::endl;
+        }
+        std::cout<<"his"<<std::endl;
+        for (int i = 0; i < his[0].size(); i++) {
+            std::cout<<his[0][i]<<std::endl;
+        }
     }
     
     Window( std::vector<int> const& lo, std::vector<int> const& hi, MPI_Comm comm )
@@ -701,7 +727,7 @@ public:
     // for put/get in standard interface
     // ---------------------------------
     // Both l/h needs to be writable, as we update them...
-    // this means extra time will be incurred in calling std::vector            HERE
+    // this means extra time will be incurred in calling std::vector            HERE, the parentheses operator for a window
     // ctor which takes an init_list
     inline WIN& operator()( std::initializer_list<int> const& l,  std::initializer_list<int> const& h, X )
     {
@@ -719,7 +745,21 @@ public:
             }
         }
         */
+#ifdef DEBUG_CHECK_GAPS
+        std::vector<int> l_vec; 
+        l_vec.insert(l_vec.end(), l.begin(), l.end());  //(2,2,2,2,2,2,2)
+        std::vector<int> h_vec; 
+        h_vec.insert(h_vec.end(), h.begin(), h.end());  //(3,3,3,3,3,3,3)
 
+        // l_vec and h_vec which are the start and end coords of the area we want to fill
+        // have access to los and his, which are the start and end coordinates of all the processes
+        // check to make sure all tiles between l_vec and h_vec are contained in los and his
+        
+        
+
+#endif
+
+    
 #ifdef DEBUG_CHECK_LIMITS
         store_lo = l;
         store_hi = h;
@@ -1684,7 +1724,7 @@ public:
     
     void operator <<( RMACXX_Subarray_t<T, GLOBAL_VIEW> const& origin )
     {
-        //HERE
+        //HERE, the << operator for  Subarray
         // check to make sure the size of the subarray matches up with the window
         // store_lo and store_hi are inclusive coordinates on the Window
 
@@ -1965,9 +2005,12 @@ private:
     // stores data range per process
     std::vector<int> rlo_, rhi_;
 
-    // TEMPORARY THING HERE
+
+    // stores the data range from the subarray constructor   HERE
     std::initializer_list<int> store_lo;
     std::initializer_list<int> store_hi;
+
+    
 
 
     // stores previous value at
