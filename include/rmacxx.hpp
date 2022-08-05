@@ -312,6 +312,7 @@ struct RMACXX_Subarray_t {};
 #include "rmacxx-expr-elem.hpp"
 #include "rmacxx-expr-bulk.hpp"
 // #include "concepts.hpp"
+#include "functions.hpp"
 
 } // namespace
 #endif //RMACXX_HPP
