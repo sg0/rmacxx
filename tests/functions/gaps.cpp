@@ -6,45 +6,39 @@
 
 int main(int argc, char *argv[]) {
 
-    std::vector<std::vector<int>> los(4), his(4);
+    std::vector<std::vector<int>> los, his;
 
-    int rank;
-    MPI_Init( &argc, &argv );
-    MPI_Comm_rank( MPI_COMM_WORLD, &rank );
-    double t0 = MPI_Wtime();
+    std::cout<<"hellow"<<std::endl;
 
-    std::vector<int> lo(3), hi(3); // size of each process, inclusive coordinates
-    if (rank == 0) // process #0
-    { 
-        lo[0] = 0; lo[1] = 0; lo[2] = 0;
-        hi[0] = 5; hi[1] = 5; hi[2] = 9;
-    }
-    else if (rank == 1) // process #1
-    {
-        lo[0] = 6; lo[1] = 0; lo[2] = 0;
-        hi[0] = 9; hi[1] = 5; hi[2] = 9;
-    }
-    else if (rank == 2) // process #2
-    {
-        lo[0] = 0; lo[1] = 6; lo[2] = 0;
-        hi[0] = 2; hi[1] = 9; hi[2] = 9;
-    }
-    else // process #3
-    {
-        lo[0] = 3; lo[1] = 6; lo[2] = 0;
-        hi[0] = 9; hi[1] = 9; hi[2] = 9;
-    }
+    //std::vector<int> print_test{1, 2, 4, 2, 2, 1, 23, 43, 4};
+    //rmacxx::print_vector(print_test);
+    
+    std::vector<int> los1, los2, los3, los4, his1, his2, his3, his4;
 
-    //all processes fill in their own coordinates
-    los[rank] = lo;
-    his[rank] = hi;
+    los1.push_back(0); los1.push_back(0); los1.push_back(0);
+    his1.push_back(5); his1.push_back(5); his1.push_back(9);
 
-    rmacxx::Window<int, GLOBAL_VIEW> win(lo, hi); //this is a barrier for all the processes 
+    los2.push_back(6); los2.push_back(0); los2.push_back(0);
+    his2.push_back(9); his2.push_back(5); his2.push_back(9);
+    
+    los3.push_back(0); los3.push_back(6); los3.push_back(0);
+    his3.push_back(2); his3.push_back(9); his3.push_back(9);
 
-    //test the function
-    if (rank == 0) {
-        std::vector<int> winsize{10, 10, 10};
-        std::cout<<"RESULT: "<<rmacxx::check_gaps(winsize, los, his)<<std::endl;
-    }
+    los4.push_back(3); los4.push_back(6); los4.push_back(0);
+    his4.push_back(9); his4.push_back(9); his4.push_back(9);
+    
+    los.push_back(los1); los.push_back(los2); los.push_back(los3); los.push_back(los4);
+    his.push_back(his1); his.push_back(his2); his.push_back(his3); his.push_back(his4); 
+    
+    std::vector<int> winsize{10, 10, 10};
+
+    rmacxx::print_vector(los[0]);
+
+
+    std::cout<<"start broken code"<<std::endl;
+    std::cout<<"RESULT: "<<rmacxx::check_gaps(winsize, los, his)<<std::endl;
+    std::cout<<"end broken code"<<std::endl;
+
+    return 0;
 }
 

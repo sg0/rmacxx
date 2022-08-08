@@ -264,8 +264,8 @@ public:
         iswinlocked_ = true;
 	    MPI_Barrier( comm_ );
         //by this point, all the processes have submitted their coordinates
-        std::cout<<"los size: "<<los.size()<<std::endl;
-        std::cout<<"los"<<std::endl;
+        //std::cout<<"los size: "<<los.size()<<std::endl;
+        //std::cout<<"los"<<std::endl;
         for (int i = 0; i < los[0].size(); i++) {
             std::cout<<los[0][i]<<std::endl;
         }
