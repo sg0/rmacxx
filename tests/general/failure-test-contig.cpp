@@ -15,7 +15,10 @@ int main(int argc, char *argv[])
 
     if (win.rank() == 0) {
         std::list<int> buff(2*5);
-        win(0, {1,2},{2,6}) << buff.data();
+        std::vector<int> weak(2*5);
+        //-rmacxx::is_contig<std::vector<int>, buff>;
+        rmacxx::is_contig auto foo = buff;
+        //win(0, {1,2},{2,6}) << weak.data();
     }
 
     win.flush();
