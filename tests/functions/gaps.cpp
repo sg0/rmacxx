@@ -8,8 +8,6 @@ int main(int argc, char *argv[]) {
 
     std::vector<std::vector<int>> los, his;
 
-    std::cout<<"hellow"<<std::endl;
-
     //std::vector<int> print_test{1, 2, 4, 2, 2, 1, 23, 43, 4};
     //rmacxx::print_vector(print_test);
     
@@ -35,9 +33,7 @@ int main(int argc, char *argv[]) {
     rmacxx::print_vector(los[0]);
 
 
-    std::cout<<"start broken code"<<std::endl;
     std::cout<<"RESULT: "<<rmacxx::check_gaps(winsize, los, his)<<std::endl;
-    std::cout<<"end broken code"<<std::endl;
 
     return 0;
 }
