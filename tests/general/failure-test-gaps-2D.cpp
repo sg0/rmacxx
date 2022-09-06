@@ -25,10 +25,10 @@ int main(int argc, char *argv[])
         lo[0] = 0; lo[1] = 6;
         hi[0] = 2; hi[1] = 9;
     }
-//    else if (rank == 3) { // process #3     creates a 3-wide gap in the x dimension
-//        lo[0] = 3; lo[1] = 6;
-//        hi[0] = 5; hi[1] = 9;
-//    }
+   else if (rank == 3) { // process #3     creates a 3-wide gap in the x dimension
+       lo[0] = 3; lo[1] = 6;
+       hi[0] = 5; hi[1] = 9;
+   }
     else if (rank == 4){ // process #4
         lo[0] = 6; lo[1] = 6;
         hi[0] = 9; hi[1] = 9;
