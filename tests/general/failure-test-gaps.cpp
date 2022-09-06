@@ -12,7 +12,7 @@ int main(int argc, char *argv[])
     double t0 = MPI_Wtime();
 
     // USER CONFIGURABLE VALUES
-    std::vector<int> lo(2), hi(2); // size of each process, inclusive coordinates
+    std::vector<int> lo(3), hi(3); // size of each process, inclusive coordinates
     if (rank == 0) { // process #0
         lo[0] = 0; lo[1] = 0; lo[2] = 0;
         hi[0] = 5; hi[1] = 5; hi[2] = 9;

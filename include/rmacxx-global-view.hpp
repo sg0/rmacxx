@@ -49,6 +49,7 @@ public:
                 ndims_, MPI_INT, comm_); \
         MPI_Allgather(hi_.data(), ndims_, MPI_INT, rhi_.data(), \
                 ndims_, MPI_INT, comm_); \
+        std::cout<<"DONE CHECKING"<<std::endl; \
         if (ndims_ == 1) \
         { \
             /* No need to create cart_comm for 1D */\
@@ -78,6 +79,8 @@ public:
             { \
                 for (int k = 0; k < ( ndims_ - 1 ); k++) \
                 { \
+                    std::cout<<"RLO SIZE "<<rlo_.size()<<std::endl; \
+                    std::cout<<"RLO INDEX "<<rlo_[0]<<std::endl; \
                     if ( rlo_[(i-1)*ndims_ + k] != rlo_[i*ndims_ + k] ) \
                     { \
                         is_pgrid_unidir_ = false; \
@@ -212,19 +215,64 @@ public:
         is_comm_dupd_ = false;
         wkind_ = ALLOC;
 
-#ifdef DEBUG_CHECK_GAPS //checks gaps where we want to place, all spaces should be allocated to a process
-        std::vector<int> this_lo(lo.size()), this_hi(lo.size());
-        for (int i = 0; i < lo.size(); i++) {
-            //std::cout<<"BAM: "<<lo[i]<<" "<<hi[i]<<std::endl;
-            this_lo[i] = lo[i];
-            this_hi[i] = hi[i];
-        }
-        los.push_back(this_lo);
-        his.push_back(this_hi);
 
-#endif
         
         GWINIT_COMMON_RANGE( lo, hi );
+
+#ifdef DEBUG_CHECK_GAPS //checks gaps where we want to place, all spaces should be allocated to a process
+        std::cout<<"WE ARE HERE"<<std::endl;
+
+        //rlo_ and rhi_ contain ALL of the coordinates, with their sizes being ndims_*commSize_
+        // check_gaps(std::vector<int> wsize, std::vector<std::vector<int>> plos, std::vector<std::vector<int>> phis)
+
+        std::vector<std::vector<int>> plos(commSize_), phis(commSize_);
+
+        for (int i = 0; i < ndims_ * commSize_; i++) { 
+
+            /*
+            ndims_ 3
+            0 / 3 -> 0
+            1 / 3 -> 0
+            2 / 3 -> 0
+            3 / 3 -> 1
+            4 / 3 -> 1
+            5 / 3 -> 1
+            6 / 3 -> 2
+            ...
+            */
+
+
+            plos[i / ndims_].push_back(rlo_[i]);
+            phis[i / ndims_].push_back(rhi_[i]);
+
+        }
+
+
+
+        //check_gaps(wsize, plos, phis)
+
+        // Print statements to check the values of rlo_ and rhi_
+        /*
+        for (int i = 0; i < ndims_ * commSize_; i++) {
+            std::cout<<"rlo_ at "<<i<<": "<<rlo_[i]<<std::endl;
+        }
+
+        for (int i = 0; i < ndims_ * commSize_; i++) {
+            std::cout<<"rhi_ at "<<i<<": "<<rhi_[i]<<std::endl;
+        }
+        */
+
+        std::cout<<"ENDING HERE"<<std::endl;
+        
+
+        std::cout<<"[ ";
+        for (int i = 0; i < los.size(); i++) {
+            std::cout<<los[0][i]<<" ";
+        }
+        std::cout<<"]"<<std::endl;
+
+
+#endif
 
 #ifdef RMACXX_USE_SAME_SIZE_INFO
 
@@ -239,6 +287,10 @@ public:
         T* base = nullptr;
         MPI_Win_allocate( nelems_ * sizeof( T ),
                           sizeof( T ), winfo_, comm_, &base, &win_ );
+        //std::cout<<"testing winfo: "<<*winfo_<<std::endl;
+        //std::cout<<"testing comm: "<<*comm_<<std::endl;
+        std::cout<<"testing base: "<<*base<<std::endl;
+        //std::cout<<"testing win: "<<*win_<<std::endl;
         MPI_Win_lock_all( MPI_MODE_NOCHECK, win_ );
         iswinlocked_ = true;
 	    MPI_Barrier( comm_ );
