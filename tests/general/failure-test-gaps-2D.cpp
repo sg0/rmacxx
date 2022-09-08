@@ -1,6 +1,5 @@
 #include "rmacxx.hpp"
 #include <list>
-
 #include <cassert>
 
 int main(int argc, char *argv[])
@@ -25,53 +24,25 @@ int main(int argc, char *argv[])
         lo[0] = 0; lo[1] = 6;
         hi[0] = 2; hi[1] = 9;
     }
-   else if (rank == 3) { // process #3     creates a 3-wide gap in the x dimension
-       lo[0] = 3; lo[1] = 6;
-       hi[0] = 5; hi[1] = 9;
-   }
-    else if (rank == 4){ // process #4
+    else if (rank == 3) { // process #3     creates a 3-wide gap in the x dimension
         lo[0] = 6; lo[1] = 6;
         hi[0] = 9; hi[1] = 9;
     }
+    // else if (rank == 4) { // process #4     if not commented out, fails test (intended)
+    //    lo[0] = 3; lo[1] = 6;
+    //    hi[0] = 9; hi[1] = 9;
+    // } 
 
-    rmacxx::Window<int, GLOBAL_VIEW> win(lo, hi);
-    win.fill(1);
-
-    if (win.size() != 5)
-    {
-        std::cout << "Number of processes should be exactly 5. Aborting..." << std::endl;
-        MPI_Abort(MPI_COMM_WORLD, -99);
+    bool exception_was_thrown = false;
+    double t1;
+    try {
+        rmacxx::Window<int, GLOBAL_VIEW> win(lo, hi); // Exception should be thrown here
+        t1 = MPI_Wtime();     
+    } catch(int construction_error) { //if throws exception, then should pass
+        t1 = MPI_Wtime();     
+        MPI_Finalize();
+       exception_was_thrown = true;
     }
-
-    std::vector<int> buff(30); //6*5
-    std::fill(buff.begin(), buff.end(), 3);
-    win({2,4},{7,8}) << buff.data();          //this should fail due to a gap in the location, instead failing at assertion
-
-    win.flush();
-
-    double t1 = MPI_Wtime();
-
-    win.barrier();
-
-    int nums[30];
-    win({2,4},{7,8}) >> nums;
-    
-    win.print("After put...");
-    win.wfree();
-
     std::cout<<"Time elapsed: "<<t1 - t0<<std::endl;
-
-	MPI_Finalize();
-
-    // run a quick assertion test
-    if (rank == 0) {
-        bool all_threes = true;
-        for (int i = 0; i < 30; i++) {
-            all_threes = all_threes && nums[i] == 3;
-        }
-        assert(all_threes);
-        std::cout<<"Pass"<<std::endl;
-    }
-
-	return 0;
+    assert(exception_was_thrown);
 }

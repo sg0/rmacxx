@@ -305,14 +305,14 @@ template <typename T,
           WinType wtype_         = LOCAL_VIEW>
 struct RMACXX_Subarray_t {};
 
+#include "functions.hpp"
+#include "concepts.hpp"
 #include "rmacxx-local-types.hpp"
 #include "rmacxx-mpi-rma.hpp"
 #include "rmacxx-local-view.hpp"
 #include "rmacxx-global-view.hpp"
 #include "rmacxx-expr-elem.hpp"
 #include "rmacxx-expr-bulk.hpp"
-#include "concepts.hpp"
-#include "functions.hpp"
 
 } // namespace
 #endif //RMACXX_HPP

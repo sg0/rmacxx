@@ -7,8 +7,8 @@ template <typename T>
 concept always_satisfied = true;
 
 // Check if number is positive (Partially Working) https://stackoverflow.com/questions/69058869/how-to-define-a-concept-for-positive-number
-//template <typename T>
-//concept is_positive = std::is_unsigned_v<T>;
+// template <typename T>
+// concept is_positive = std::is_unsigned_v<T>;
 
 
 
@@ -22,12 +22,9 @@ concept always_satisfied = true;
 // };
 
 
-
-
-
 // Check if data type is contiguous (Working)
 template <typename T>
-concept is_contig = std::contiguous_iterator<T>;
+concept is_contig = std::contiguous_iterator<typename T::iterator>;
 
 // try feeding the concept a const function
 

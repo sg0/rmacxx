@@ -247,8 +247,18 @@ public:
         // check_gaps(std::vector<int> wsize, std::vector<std::vector<int>> plos, std::vector<std::vector<int>> phis)
 
         std::vector<std::vector<int>> plos(commSize_), phis(commSize_);
+        std::vector<int> dmin(ndims_), dmax(ndims_);
+        std::vector<int> wsize(ndims_);
+        
+        int process_index;
+        int dimension_index;
 
-        for (int i = 0; i < ndims_ * commSize_; i++) { 
+
+        for (int i = 0; i < ndims_; i++) {
+            dmin[i] = INT32_MAX;
+        }
+
+        for (int i = 0; i < ndims_ * commSize_; i++) {
 
             /*
             ndims_ 3
@@ -261,16 +271,35 @@ public:
             6 / 3 -> 2
             ...
             */
+            
+            process_index = i / ndims_;
+            dimension_index = i % ndims_;
 
+            int hi = rhi_[i];
+            int lo = rlo_[i];
 
-            plos[i / ndims_].push_back(rlo_[i]);
-            phis[i / ndims_].push_back(rhi_[i]);
+            if (lo < dmin[dimension_index]) {
+                dmin[dimension_index] = lo;
+            }
+
+            if (hi > dmax[dimension_index]) {
+                dmax[dimension_index] = hi;
+            }
+
+            plos[process_index].push_back(lo);
+            phis[process_index].push_back(hi);
 
         }
 
+        for (int i = 0; i < ndims_; i++) {
+            wsize[i] = dmax[i] - dmin[i];
+        }
 
-
-        //check_gaps(wsize, plos, phis)
+        bool no_gaps_exist = check_gaps(wsize, plos, phis);
+        if (!no_gaps_exist) {
+            throw -1;
+        }
+        std::cout<<(no_gaps_exist?"THERE ARE NO GAPS AT ALL":"There are gaps at all.")<<std::endl;
 
         // Print statements to check the values of rlo_ and rhi_
         /*
@@ -316,15 +345,15 @@ public:
         iswinlocked_ = true;
 	    MPI_Barrier( comm_ );
         //by this point, all the processes have submitted their coordinates
-        //std::cout<<"los size: "<<los.size()<<std::endl;
-        //std::cout<<"los"<<std::endl;
-        for (int i = 0; i < los[0].size(); i++) {
-            std::cout<<los[0][i]<<std::endl;
-        }
-        std::cout<<"his"<<std::endl;
-        for (int i = 0; i < his[0].size(); i++) {
-            std::cout<<his[0][i]<<std::endl;
-        }
+        // std::cout<<"los size: "<<los.size()<<std::endl;
+        // std::cout<<"los"<<std::endl;
+        // for (int i = 0; i < los[0].size(); i++) {
+        //     std::cout<<los[0][i]<<std::endl;
+        // }
+        // std::cout<<"his"<<std::endl;
+        // for (int i = 0; i < his[0].size(); i++) {
+        //     std::cout<<his[0][i]<<std::endl;
+        // }
     }
     
     Window( std::vector<int> const& lo, std::vector<int> const& hi, MPI_Comm comm )
@@ -819,20 +848,6 @@ public:
             }
         }
         */
-#ifdef DEBUG_CHECK_GAPS
-        std::vector<int> l_vec; 
-        l_vec.insert(l_vec.end(), l.begin(), l.end());  //(2,2,2,2,2,2,2)
-        std::vector<int> h_vec; 
-        h_vec.insert(h_vec.end(), h.begin(), h.end());  //(3,3,3,3,3,3,3)
-
-        // l_vec and h_vec which are the start and end coords of the area we want to fill
-        // have access to los and his, which are the start and end coordinates of all the processes
-        // check to make sure all tiles between l_vec and h_vec are contained in los and his
-        
-        
-
-#endif
-
     
 #ifdef DEBUG_CHECK_LIMITS
         store_lo = l;

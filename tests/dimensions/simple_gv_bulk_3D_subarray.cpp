@@ -41,7 +41,7 @@ int main(int argc, char *argv[])
     {
         lo[0] = 2; lo[1] = 2; lo[2] = 0;
         hi[0] = 3; hi[1] = 3; hi[2] = 3;
-    }   
+    }
 
     // create Window
     rmacxx::Window<int,GLOBAL_VIEW> win(lo, hi);
