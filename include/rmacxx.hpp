@@ -231,9 +231,10 @@ public:
         static FuturesManager s_instance;
         return s_instance;
     }
-    inline exprid new_id(){
+    inline exprid new_expr(std::future<void> future){
         exprid new_id = this->next_id_++;
         expression_liveness_[new_id] = true;
+        expression_completion_futures_[new_id] = future;
         return new_id;
     }
     inline void remove_expr(exprid id){

@@ -2,27 +2,27 @@
 // a reference
 // required to wrap the window object
 // to create an EExpr object
-template <typename T, class P>
+template <typename T, class WIN>
 class RefEExpr
 {
 public:
-    RefEExpr( P const& p ) : p_( p ) {}
+    RefEExpr( WIN const& win ) : win_( win ) {}
 
-    inline T eval() const { return p_.eval(); }
-    inline bool is_win_b() const { return p_.is_win_b(); }
-    inline WinCompletion completion() const { return p_.completion(); }
-    inline void flush_win() const { p_.flush_win(); }
-    inline void flush_expr() const { p_.flush_expr(); }
-    inline void add_expr(exprid expr) const { p_.add_expr(expr); }
+    inline T eval() const { return win_.eval(); }
+    inline bool is_win_b() const { return win_.is_win_b(); }
+    inline WinCompletion completion() const { return win_.completion(); }
+    inline void flush_win() const { win_.flush_win(); }
+    inline void flush_expr() const { win_.flush_expr(); }
+    inline void block_on_expr(exprid expr) const { win_.block_on_expr(expr); }
 
     inline void eexpr_outstanding_gets() const
-    { p_.eexpr_outstanding_gets(); }
+    { win_.eexpr_outstanding_gets(); }
     inline void eexpr_outstanding_put( const T val ) const
-    { p_.eexpr_outstanding_put( val ); }
+    { win_.eexpr_outstanding_put( val ); }
     inline void expr_ignore_last_get() const
-    { p_.expr_ignore_last_get(); }
+    { win_.expr_ignore_last_get(); }
 private:
-    P const& p_;
+    WIN const& win_;
 };
 
 template <typename T, class V>
@@ -36,7 +36,7 @@ public:
     inline WinCompletion completion() const { return v_.completion(); }
     inline void flush_win() const { v_.flush_win(); }
     inline void flush_expr() const { v_.flush_expr(); }
-    inline void add_expr(exprid expr) const { v_.add_expr(expr); }
+    inline void block_on_expr(exprid expr) const { v_.block_on_expr(expr); }
 
     inline void eexpr_outstanding_gets() const
     { v_.eexpr_outstanding_gets(); }
@@ -267,9 +267,9 @@ public:
         b_.eexpr_outstanding_gets();
     }
 
-    inline void add_expr(exprid expr) const {
-        a_.add_expr(expr);
-        b_.add_expr(expr);
+    inline void block_on_expr(exprid expr) const {
+        a_.block_on_expr(expr);
+        b_.block_on_expr(expr);
     }
     inline T eval() const { return OP::apply( a_.eval(), b_.eval() ); }
 
@@ -300,7 +300,7 @@ public:
 
     inline void eexpr_outstanding_gets() const
     { a_.eexpr_outstanding_gets(); }
-    inline void add_expr(exprid expr) const { a_.add_expr(expr); }
+    inline void block_on_expr(exprid expr) const { a_.block_on_expr(expr); }
 
     inline T eval() const
     {
