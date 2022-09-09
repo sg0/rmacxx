@@ -1966,7 +1966,7 @@ public:
         }
     }
 
-    inline void add_expr(exprid expr) const { this->expressions_.emplace_back(expr); }
+    inline void block_on_expr(exprid expr) const { this->expressions_.emplace_back(expr); }
     // this is to make it easy to just call flush_all
     // from the expression classes
     inline void flush_win() const
@@ -2101,7 +2101,7 @@ private:
     bool is_fop_, is_cas_, is_comm_dupd_;
 
 #ifndef RMACXX_USE_CLASSIC_HANDLES
-    std::vector<exprid> expressions_;
+    mutable std::vector<exprid> expressions_;
 #endif
     // parameters for subarray construction
     mutable std::vector<int> subsizes_, starts_;
