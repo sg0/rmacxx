@@ -28,4 +28,4 @@ BIN = $@
 check: $(OBJS) $(BINS) clean
 
 clean:
-	$(RM) */*$(PRG_SUFFIX) */*$(OBJ_SUFFIX)
+	$(RM) **$(PRG_SUFFIX) **$(OBJ_SUFFIX)

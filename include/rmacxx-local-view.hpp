@@ -1334,7 +1334,7 @@ public:
             LWFLUSH();
         }
     }
-    inline void add_expr(exprid expr) const { this->expressions_.emplace_back(expr); }
+    inline void block_on_expr(exprid expr) const { this->expressions_.emplace_back(expr); }
 
     // this is to make it easy to just call flush_all
     // from the expression classes
@@ -1449,7 +1449,7 @@ private:
     bool is_fop_, is_cas_;
 
 #ifndef RMACXX_USE_CLASSIC_HANDLES
-    std::vector<exprid> expressions_;
+    mutable std::vector<exprid> expressions_;
 #endif
     mutable std::vector<int> subsizes_;
     mutable std::vector<int> starts_;
