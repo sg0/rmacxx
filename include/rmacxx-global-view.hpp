@@ -49,7 +49,7 @@ public:
                 ndims_, MPI_INT, comm_); \
         MPI_Allgather(hi_.data(), ndims_, MPI_INT, rhi_.data(), \
                 ndims_, MPI_INT, comm_); \
-        std::cout<<"DONE CHECKING"<<std::endl; \
+        /*std::cout<<"DONE CHECKING"<<std::endl;*/ \
         if (ndims_ == 1) \
         { \
             /* No need to create cart_comm for 1D */\
@@ -79,8 +79,8 @@ public:
             { \
                 for (int k = 0; k < ( ndims_ - 1 ); k++) \
                 { \
-                    std::cout<<"RLO SIZE "<<rlo_.size()<<std::endl; \
-                    std::cout<<"RLO INDEX "<<rlo_[0]<<std::endl; \
+                    /*std::cout<<"RLO SIZE "<<rlo_.size()<<std::endl;*/ \
+                    /*std::cout<<"RLO INDEX "<<rlo_[0]<<std::endl;*/ \
                     if ( rlo_[(i-1)*ndims_ + k] != rlo_[i*ndims_ + k] ) \
                     { \
                         is_pgrid_unidir_ = false; \
@@ -220,7 +220,7 @@ public:
         GWINIT_COMMON_RANGE( lo, hi );
 
 #ifdef DEBUG_CHECK_GAPS //checks gaps where we want to place, all spaces should be allocated to a process
-        std::cout<<"WE ARE HERE"<<std::endl;
+        //std::cout<<"WE ARE HERE"<<std::endl;
 
         //rlo_ and rhi_ contain ALL of the coordinates, with their sizes being ndims_*commSize_
         // check_gaps(std::vector<int> wsize, std::vector<std::vector<int>> plos, std::vector<std::vector<int>> phis)
