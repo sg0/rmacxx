@@ -247,6 +247,8 @@ template <typename T,
           WinType wtype_         = LOCAL_VIEW>
 struct RMACXX_Subarray_t {};
 
+#include "functions.hpp"
+#include "concepts.hpp"
 #include "rmacxx-local-types.hpp"
 #include "rmacxx-mpi-rma.hpp"
 #include "rmacxx-local-view.hpp"

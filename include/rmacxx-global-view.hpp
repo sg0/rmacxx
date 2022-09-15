@@ -19,6 +19,10 @@ public:
     // TODO FIXME removed cart_comm ctor for now due to some bugs
     // shall bring it back soon after clean up
 
+    // stores all the lo's and hi's, packaged together for each process
+    std::vector<std::vector<int>> los;
+    std::vector<std::vector<int>> his;
+
 #define GWINIT_COMMON_RANGE(lo, hi) \
     do { \
         /* calculate dims */ \
@@ -45,6 +49,7 @@ public:
                 ndims_, MPI_INT, comm_); \
         MPI_Allgather(hi_.data(), ndims_, MPI_INT, rhi_.data(), \
                 ndims_, MPI_INT, comm_); \
+        /*std::cout<<"DONE CHECKING"<<std::endl;*/ \
         if (ndims_ == 1) \
         { \
             /* No need to create cart_comm for 1D */\
@@ -74,6 +79,8 @@ public:
             { \
                 for (int k = 0; k < ( ndims_ - 1 ); k++) \
                 { \
+                    /*std::cout<<"RLO SIZE "<<rlo_.size()<<std::endl;*/ \
+                    /*std::cout<<"RLO INDEX "<<rlo_[0]<<std::endl;*/ \
                     if ( rlo_[(i-1)*ndims_ + k] != rlo_[i*ndims_ + k] ) \
                     { \
                         is_pgrid_unidir_ = false; \
@@ -202,13 +209,99 @@ public:
         lstarts_.reserve(ndims_); \
     } while(0)
 
-    Window( std::vector<int> const& lo, std::vector<int> const& hi )
+    Window( std::vector<int> const& lo, std::vector<int> const& hi ) //HERE, constructor for window
     {
         comm_ = MPI_COMM_WORLD;
         is_comm_dupd_ = false;
         wkind_ = ALLOC;
+
+
         
         GWINIT_COMMON_RANGE( lo, hi );
+
+#ifdef DEBUG_CHECK_GAPS //checks gaps where we want to place, all spaces should be allocated to a process
+        //std::cout<<"WE ARE HERE"<<std::endl;
+
+        //rlo_ and rhi_ contain ALL of the coordinates, with their sizes being ndims_*commSize_
+        // check_gaps(std::vector<int> wsize, std::vector<std::vector<int>> plos, std::vector<std::vector<int>> phis)
+
+        std::vector<std::vector<int>> plos(commSize_), phis(commSize_);
+        std::vector<int> dmin(ndims_), dmax(ndims_);
+        std::vector<int> wsize(ndims_);
+        
+        int process_index;
+        int dimension_index;
+
+
+        for (int i = 0; i < ndims_; i++) {
+            dmin[i] = INT32_MAX;
+        }
+
+        for (int i = 0; i < ndims_ * commSize_; i++) {
+
+            /*
+            ndims_ 3
+            0 / 3 -> 0
+            1 / 3 -> 0
+            2 / 3 -> 0
+            3 / 3 -> 1
+            4 / 3 -> 1
+            5 / 3 -> 1
+            6 / 3 -> 2
+            ...
+            */
+            
+            process_index = i / ndims_;
+            dimension_index = i % ndims_;
+
+            int hi = rhi_[i];
+            int lo = rlo_[i];
+
+            if (lo < dmin[dimension_index]) {
+                dmin[dimension_index] = lo;
+            }
+
+            if (hi > dmax[dimension_index]) {
+                dmax[dimension_index] = hi;
+            }
+
+            plos[process_index].push_back(lo);
+            phis[process_index].push_back(hi);
+
+        }
+
+        for (int i = 0; i < ndims_; i++) {
+            wsize[i] = dmax[i] - dmin[i];
+        }
+
+        bool no_gaps_exist = check_gaps(wsize, plos, phis);
+        if (!no_gaps_exist) {
+            throw -1;
+        }
+        std::cout<<(no_gaps_exist?"THERE ARE NO GAPS AT ALL":"There are gaps at all.")<<std::endl;
+
+        // Print statements to check the values of rlo_ and rhi_
+        /*
+        for (int i = 0; i < ndims_ * commSize_; i++) {
+            std::cout<<"rlo_ at "<<i<<": "<<rlo_[i]<<std::endl;
+        }
+
+        for (int i = 0; i < ndims_ * commSize_; i++) {
+            std::cout<<"rhi_ at "<<i<<": "<<rhi_[i]<<std::endl;
+        }
+        */
+
+        std::cout<<"ENDING HERE"<<std::endl;
+        
+
+        std::cout<<"[ ";
+        for (int i = 0; i < los.size(); i++) {
+            std::cout<<los[0][i]<<" ";
+        }
+        std::cout<<"]"<<std::endl;
+
+
+#endif
 
 #ifdef RMACXX_USE_SAME_SIZE_INFO
 
@@ -223,9 +316,23 @@ public:
         T* base = nullptr;
         MPI_Win_allocate( nelems_ * sizeof( T ),
                           sizeof( T ), winfo_, comm_, &base, &win_ );
+        //std::cout<<"testing winfo: "<<*winfo_<<std::endl;
+        //std::cout<<"testing comm: "<<*comm_<<std::endl;
+        std::cout<<"testing base: "<<*base<<std::endl;
+        //std::cout<<"testing win: "<<*win_<<std::endl;
         MPI_Win_lock_all( MPI_MODE_NOCHECK, win_ );
         iswinlocked_ = true;
-	MPI_Barrier( comm_ );
+	    MPI_Barrier( comm_ );
+        //by this point, all the processes have submitted their coordinates
+        // std::cout<<"los size: "<<los.size()<<std::endl;
+        // std::cout<<"los"<<std::endl;
+        // for (int i = 0; i < los[0].size(); i++) {
+        //     std::cout<<los[0][i]<<std::endl;
+        // }
+        // std::cout<<"his"<<std::endl;
+        // for (int i = 0; i < his[0].size(); i++) {
+        //     std::cout<<his[0][i]<<std::endl;
+        // }
     }
     
     Window( std::vector<int> const& lo, std::vector<int> const& hi, MPI_Comm comm )
@@ -701,10 +808,30 @@ public:
     // for put/get in standard interface
     // ---------------------------------
     // Both l/h needs to be writable, as we update them...
-    // this means extra time will be incurred in calling std::vector
+    // this means extra time will be incurred in calling std::vector            HERE, the parentheses operator for a window
     // ctor which takes an init_list
     inline WIN& operator()( std::initializer_list<int> const& l,  std::initializer_list<int> const& h, X )
     {
+        /*
+        // run window check here
+        std::vector<int> lv(l.size()), hv(h.size());
+        lv.insert(lv.end(), l.begin(), l.end());
+        hv.insert(hv.end(), h.begin(), h.end());
+
+        for (int i = 0; i < l.size(); i++){
+            if (lv[i] < lo_[i] || hv[i] > hi_[i] ) {
+                // failed check
+                std::cout << "Accessing out of the bounds of the window" << std::endl;
+                abort();
+            }
+        }
+        */
+    
+#ifdef DEBUG_CHECK_LIMITS
+        store_lo = l;
+        store_hi = h;
+#endif
+
         lock();
 
         if ( ndims_ > 1 )
@@ -1661,15 +1788,53 @@ public:
 
     // overload istream op for bulk noncontiguous `put/acc
     // ---------------------------------------------------
+    
     void operator <<( RMACXX_Subarray_t<T, GLOBAL_VIEW> const& origin )
     {
+        //HERE, the << operator for  Subarray
+        // check to make sure the size of the subarray matches up with the window
+        // store_lo and store_hi are inclusive coordinates on the Window
+
+        //std::vector<int> nlo, nhi;
+
+#ifdef RMACXX_SUBARRAY_USE_END_COORDINATES
+        // if we're given inclusive coordinates
+        std::vector<int> nhi;
+        nhi.insert(nhi.end(), store_hi.begin(), store_hi.end());
+#ifdef DEBUG_CHECK_LIMITS
+        if (origin.sizes_ != nhi) {
+            //failed check
+            std::cout << "Coordinates not equal" << std::endl;
+            abort();
+        }
+#endif
+#else
+        //if we're given size
+        std::vector<int> nlo, nhi;
+        nlo.insert(nlo.end(), store_lo.begin(), store_lo.end());
+        nhi.insert(nhi.end(), store_hi.begin(), store_hi.end());
+
+        //take all the hi and lo values and convert them into sizes
+        std::vector<int> sizes(nhi.size());
+        for (int i = 0; i < nlo.size(); i++) {
+            sizes[i] = nhi[i] - nlo[i] + 1;
+        }
+#ifdef DEBUG_CHECK_LIMITS
+        if (origin.sizes_ != sizes) {
+            //failed check
+            std::cout << "Coordinates not equal" << std::endl;
+            abort();
+        }
+#endif
+#endif
+
         if ( winop_.op == MPI_OP_NULL )
             RMACXX_GLOBAL_BULK_XFER_NC(origin, RMACXX_BULK_PUT_GLOBAL);
         else
         {
             RMACXX_GLOBAL_BULK_XFER_NC(origin, RMACXX_BULK_ACC_GLOBAL);
             winop_ = Op();
-	}
+	    }
 
         if ( wcmpl_ == LOCAL_FLUSH )
             flush_local();
@@ -1684,11 +1849,14 @@ public:
     // --------------------------------------------------
     void operator >>( RMACXX_Subarray_t<T, GLOBAL_VIEW> const& origin )
     {
+        // check subarray and window sizes
+        //this.
+
         if ( is_fop_ )
         {
             RMACXX_GLOBAL_BULK_XFER_NC(origin, RMACXX_BULK_GACC_GLOBAL);
             is_fop_ = false;
-	}
+	    }
         else
             RMACXX_GLOBAL_BULK_XFER_NC(origin, RMACXX_BULK_GET_GLOBAL);
 
@@ -1903,6 +2071,14 @@ private:
 
     // stores data range per process
     std::vector<int> rlo_, rhi_;
+
+
+    // stores the data range from the subarray constructor   HERE
+    std::initializer_list<int> store_lo;
+    std::initializer_list<int> store_hi;
+
+    
+
 
     // stores previous value at
     // a particular offset, used

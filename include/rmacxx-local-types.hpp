@@ -10,6 +10,7 @@
 template <typename T> 
 struct RMACXX_Subarray_t<T, LOCAL_VIEW>
 {
+// converts initalizer lists into vectors
 #define RMACXX_SUBARRAY_TYPE_CREATE(starts, subsizes, sizes) \
     do { \
         starts_.insert(starts_.end(), starts.begin(), starts.end()); \
@@ -112,11 +113,12 @@ struct RMACXX_Subarray_t<T, LOCAL_VIEW>
 template <typename T> 
 struct RMACXX_Subarray_t<T, GLOBAL_VIEW>
 {
+// macro converts intializer lists into vectors
 #define RMACXX_SUBARRAY_STORE_GLOBAL(sizes, starts) \
     do { \
         sizes_.insert(sizes_.end(), sizes.begin(), sizes.end()); \
         starts_.insert(starts_.end(), starts.begin(), starts.end()); \
-        ptr_ = nullptr; \
+        ptr_ = nullptr; std::cout<<"we were here"<<std::endl; \
     } while(0)
  
 #define RMACXX_SUBARRAY_STORE_GLOBAL_1D(starts) \
@@ -129,10 +131,21 @@ struct RMACXX_Subarray_t<T, GLOBAL_VIEW>
         } \
         ptr_ = nullptr; \
     } while(0)
-    
+
+#ifdef RMACXX_SUBARRAY_USE_END_COORDINATES // pass the starts and ends constructors into the macro, then perform conversions HERE
+    RMACXX_Subarray_t ( std::initializer_list<int> const& starts, 
+            std::initializer_list<int> const& ends ) 
+    {
+        RMACXX_SUBARRAY_STORE_GLOBAL(ends, starts);  // ends, starts -> sizes_, starts_
+        for (int i = 0; i < sizes_.size(); i++) {
+            sizes_[i] = sizes_[i] - starts_[i] + 1; // we do +1 because ends is inclusive
+        }
+    }
+#else // pass the starts and sizes constructors into the macro, default
     RMACXX_Subarray_t ( std::initializer_list<int> const& starts, 
             std::initializer_list<int> const& sizes )
     { RMACXX_SUBARRAY_STORE_GLOBAL(sizes, starts); }
+#endif
     
     RMACXX_Subarray_t ( std::initializer_list<int> const& starts )
     { RMACXX_SUBARRAY_STORE_GLOBAL_1D( starts ); }
