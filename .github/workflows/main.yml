@@ -8,6 +8,9 @@ on: [push,pull_request,workflow_dispatch]
 
 jobs:
   test:
+    env:
+       CC:   gcc-10
+       CXX:  g++-10
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -18,7 +21,4 @@ jobs:
         uses: actions/checkout@v2
       - name: Setup MPI
         uses: mpi4py/setup-mpi@v1
-        env:
-          CC: gcc-11
-          CXX: g++-11
       - run: make -C tests check -k -B
