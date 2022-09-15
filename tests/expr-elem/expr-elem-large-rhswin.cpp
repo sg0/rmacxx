@@ -24,11 +24,11 @@ int main(int argc, char *argv[])
 	win.print("Current...");
 
 	// expressions...
-	win(1, {0}) + 2 * win(1, {500}) + 3 * win(1, {500}) >> win(0, {9990});
-	win(1, {999}) + win(1, {0}) >> win(0, {9991});
-	win(1, {500}) + 3 * win(1, {4}) >> win(1, {9992});
-	2 * win(1, {0}) + 3 * win(1, {0}) >> win(1, {9993});
-	win(1, {2}) + 2 * win(1, {200}) + 5 * win(1, {0}) >> win(1, {9994});
+	win(1, {0}) + 2 * win(1, {500}) + 3 * win(1, {500})	>> win(0, {990});
+	win(1, {999}) + win(1, {0})                   		>> win(0, {991});
+	win(1, {500}) + 3 * win(1, {4})				 		>> win(1, {992});
+	2 * win(1, {0}) + 3 * win(1, {0}) 					>> win(1, {993});
+	win(1, {2}) + 2 * win(1, {200}) + 5 * win(1, {0}) 	>> win(1, {994});
 
 	// in this case, a flush is needed to
 	// complete the expression evaluations
@@ -40,13 +40,7 @@ int main(int argc, char *argv[])
 	win(1, {992}) >> num3;
 	win(1, {993}) >> num4;
 	win(1, {994}) >> num5;
-
-	// check results
-	assert(num1 == 6);
-	assert(num2 == 2);
-	assert(num3 == 4);
-	assert(num4 == 5);
-	assert(num5 == 8);
+	win.flush();
 
 	if (win.rank() == 0)
 	{
@@ -58,9 +52,17 @@ int main(int argc, char *argv[])
 		std::cout << "win(1,{0}) + 3*win(1,{4}) = " << num3 << std::endl;
 		std::cout << "2*win(1,{0}) + 3*win(1,{0}) = " << num4 << std::endl;
 		std::cout << "win(1,{2}) + 2*win(1,{0}) + 5*win(1,{0}) = " << num5 << std::endl;
-		std::cout << "Validation PASSED." << std::endl;
 	}
 
+	// check results
+	assert(num1 == 6);
+	assert(num2 == 2);
+	assert(num3 == 4);
+	assert(num4 == 5);
+	assert(num5 == 8);
+	if (win.rank() == 0){
+		std::cout << "Validation PASSED." << std::endl;
+	}
 	MPI_Barrier(MPI_COMM_WORLD);
 
 	win.wfree();
