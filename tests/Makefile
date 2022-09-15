@@ -1,4 +1,4 @@
-SRCS       := $(wildcard */*.cpp)
+SRCS       := $(wildcard ***.cpp)
 PRGS       := $(patsubst %.cpp,%,$(SRCS))
 PRG_SUFFIX  =.test
 OBJ_SUFFIX  =.o
