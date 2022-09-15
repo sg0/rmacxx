@@ -103,7 +103,7 @@ typedef enum
 } WinKind;
 
 #ifndef PREALLOC_BUF_SZ
-#define PREALLOC_BUF_SZ     256
+#define PREALLOC_BUF_SZ     65536
 #endif
 
 // for expressions
