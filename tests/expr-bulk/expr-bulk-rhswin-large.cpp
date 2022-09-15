@@ -1,3 +1,4 @@
+#define PREALLOC_BUF_SZ 100000
 #include "rmacxx.hpp"
 
 #include <cassert>
@@ -25,10 +26,10 @@ int main(int argc, char *argv[])
     win.fill(1);
 
     std::vector<double> chunk1, chunk2, chunk3, chunk4;
-    chunk1.resize(50*50);
-    chunk2.resize(50*50);
-    chunk3.resize(50*50);
-    chunk4.resize(50*50);
+    chunk1.resize(51*51);
+    chunk2.resize(51*51);
+    chunk3.resize(51*51);
+    chunk4.resize(51*51);
     double* data1 = chunk1.data();
     double* data2 = chunk2.data();
     double* data3 = chunk3.data();
@@ -37,7 +38,7 @@ int main(int argc, char *argv[])
     win(1,{0,0},{50,50})*win(0,{0,0},{50,50}) + (2+win(1,{0,0},{50,50})) + (3+win(1,{0,0},{50,50}))     >> win(0,{50,50},{100,100});
     win(0,{0,0},{50,50})*win(1,{0,0},{50,50}) + 4*win(1,{0,0},{50,50}) + 5*win(1,{0,0},{50,50})         >> win(1,{101,101},{151,151});
     win(1,{0,0},{50,50})*win(0,{0,0},{50,50}) + 2*(win(1,{0,0},{50,50})*win(1,{0,0},{50,50}))           >> win(0,{201,201},{251,251});
-    4*win(1,{0,0},{50,50})*win(1,{0,0},{50,50}) + 2*win(0,{0,0},{50,50}) + (5+win(0,{0,0},{50,50}))     >> win(1,{500,500},{550,550});
+    4*(win(1,{0,0},{50,50})*win(1,{0,0},{50,50})) + 2*win(0,{0,0},{50,50}) + (5+win(0,{0,0},{50,50}))     >> win(1,{500,500},{550,550});
    
     // flush to complete expression
     win.flush();
