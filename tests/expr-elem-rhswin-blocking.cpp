@@ -27,18 +27,14 @@ int main(int argc, char *argv[])
     2*win(1,{2}) + 3*win(1,{3}) >> win(1,{8});
     win(1,{2}) + 2*win(1,{0}) + 5*win(1,{3}) >> win(1,{9});
 
+    win.flush(); // NOTE: Local flush still requires a flush to preform computuation
+
     // check results
     win(0,{5}) >> num1;
     win(0,{6}) >> num2;
     win(1,{7}) >> num3;
     win(1,{8}) >> num4;
     win(1,{9}) >> num5;
-    
-    assert(num1 == 6);
-    assert(num2 == 2);
-    assert(num3 == 4);
-    assert(num4 == 5);
-    assert(num5 == 8);
 
     if (win.rank() == 0)
     {
@@ -50,6 +46,14 @@ int main(int argc, char *argv[])
         std::cout << "win(1,{1}) + 3*win(1,{4}) = " << num3 << std::endl;
         std::cout << "2*win(1,{2}) + 3*win(1,{3}) = " << num4 << std::endl;
         std::cout << "win(1,{2}) + 2*win(1,{0}) + 5*win(1,{3}) = " << num5 << std::endl;
+    }
+
+    assert(num1 == 6);
+    assert(num2 == 2);
+    assert(num3 == 4);
+    assert(num4 == 5);
+    assert(num5 == 8);
+    if (win.rank() == 0){
         std::cout << "Validation PASSED." << std::endl;
     }
 

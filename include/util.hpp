@@ -102,14 +102,22 @@ typedef enum
     DYNAMIC
 } WinKind;
 
+#ifndef PREALLOC_BUF_SZ
 #define PREALLOC_BUF_SZ     256
+#endif
 
 // for expressions
+#ifndef DEFAULT_EXPR_COUNT
 #define DEFAULT_EXPR_COUNT  1000
+#endif
 
 // placement new buffer sizes
+#ifndef DEFAULT_EEXPR_SIZE
 #define DEFAULT_EEXPR_SIZE  4194304
+#endif
+#ifndef DEFAULT_BEXPR_SIZE
 #define DEFAULT_BEXPR_SIZE  16777216
+#endif
 
 // element-wise arithmetic operations
 template <typename T> struct Add { static T apply( T l, T r ) { return ( l+r ); } };

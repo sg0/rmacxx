@@ -9,7 +9,7 @@
 #include "rmacxx.hpp"
 #endif
 
-#define DEFAULT_NITERS  100000000
+#define DEFAULT_NITERS  10000
 #define WARMUP_NITERS   20
 
 #ifdef SDE_PROFILING
