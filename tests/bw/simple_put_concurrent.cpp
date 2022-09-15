@@ -10,7 +10,7 @@
 #endif
 //#include <omp.h>
 
-#define DEFAULT_NITERS  1000000000
+#define DEFAULT_NITERS  10000
 #define WARMUP_NITERS   20
 
 #ifdef SDE_PROFILING

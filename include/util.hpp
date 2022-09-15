@@ -115,7 +115,6 @@ typedef enum
 #ifndef DEFAULT_EEXPR_SIZE
 #define DEFAULT_EEXPR_SIZE  4194304
 #endif
-
 #ifndef DEFAULT_BEXPR_SIZE
 #define DEFAULT_BEXPR_SIZE  16777216
 #endif
