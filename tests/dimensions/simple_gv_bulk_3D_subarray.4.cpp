@@ -95,8 +95,6 @@ int main(int argc, char *argv[])
     rmacxx::RMACXX_Subarray_t<int,GLOBAL_VIEW> sub({extract_offset[0], extract_offset[1], extract_offset[2]},{transfer_dims[0],transfer_dims[1],transfer_dims[2]});
 
     // put
-    std::cout<<"waddup"<<std::endl;
-
     win({place_offset[0], place_offset[1], place_offset[2]},{
             place_offset[0] + transfer_dims[0] - 1,
             place_offset[1] + transfer_dims[1] - 1,

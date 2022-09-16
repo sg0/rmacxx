@@ -117,7 +117,10 @@ public:
     inline void operator >>( T* buf )
     {
         // post outstanding gets
+        std::cout<<"rbexpr_outstanding_gets"<<std::endl;
         bexpr_outstanding_gets();
+        std::cout<<"rbexpr_outstanding_gets2 electric boogaloo"<<std::endl;
+
 
         if ( is_win_b() )
             fillInto( buf );
