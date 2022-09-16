@@ -1,5 +1,6 @@
 #include "rmacxx.hpp"
 #include <math.h>
+#include <cassert>
 
 //THIS TEST MUST NOT USE THE RMACXX_SUBARRAY_USE_END_COORDINATES FLAG
 
