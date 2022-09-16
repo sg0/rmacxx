@@ -1,3 +1,4 @@
+#define DEBUG_CHECK_GAPS
 #include "rmacxx.hpp"
 #include <list>
 #include <cassert>
