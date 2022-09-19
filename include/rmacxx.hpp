@@ -233,67 +233,60 @@ public:
     }
     inline exprid new_expr(std::future<void> future){
         exprid new_id = this->next_id_++;
+        std::cout<<"Creating expression '" << new_id<<"'"<<std::endl;
         expression_liveness_[new_id] = true;
-        expression_completion_futures_[new_id] = future;
+        expression_completion_futures_[new_id] = std::move(future);
         return new_id;
     }
     inline void remove_expr(exprid id){
-        expression_liveness_[id] = false;
-        expression_completion_futures_[id].~future();
+        expression_liveness_[id] = false;// Mark that it has been done already
+//        expression_completion_futures_[id].~future();// Delete the future
     }
     inline void unblock_expr(exprid id){
+        std::cout<<"Unblocking expression (" << id <<"/"<<this->next_id_<<")"<<(expression_liveness_[id]?"L":"D")<<std::endl;
         if(expression_liveness_[id]){
             if((expression_blocking_count_[id]--) == 0){
-                expression_completion_futures_[id].get();
+                std::cout<<"Getting.."<<std::endl;
+                expression_completion_futures_[id].get(); // Complete operation
+                std::cout<<"Gotted!"<<std::endl;
+                this->remove_expr(id);
+                std::cout<<"Goned!"<<std::endl;
             }
         }
     }
+    inline T* allocate(std::size_t size) {
+        auto data_ptr_offset = this->next_data_index_;
+        this->next_data_index_+= size;
+        return &this->data_buffer_[data_ptr_offset];
+    }
 private:
+    // Expression bump allocator
     int expression_blocking_count_[DEFAULT_EXPR_COUNT];
     bool expression_liveness_[DEFAULT_EXPR_COUNT];
     std::future<void> expression_completion_futures_[DEFAULT_EXPR_COUNT];
     exprid next_id_ = 0;
+
+    // Data bump allocator
+    T data_buffer_[DEFAULT_BEXPR_SIZE+DEFAULT_EEXPR_SIZE];
+    unsigned int next_data_index_ = 0;
 };
 #endif
 // base class for element-wise and bulk expressions
 // https://stackoverflow.com/questions/300986/when-should-you-not-use-virtual-destructors
-#ifndef RMACXX_USE_CLASSIC_HANDLES
-template <typename T> class ExprBase
-{   
-    ExprBase(){
-        this->id_ = FuturesManager<T>::instance().new_id(); 
-    }
-private:
-    exprid id_;
-    ~ExprBase(){
-        FuturesManager<T>::instance().remove_expr(id_);
-    }
-    //virtual ~ExprBase() {}
-};
-#endif
 
 template <typename T> class EExprBase
-#ifndef RMACXX_USE_CLASSIC_HANDLES 
-: ExprBase<T>
-#endif
-{   
+{
 public:
     virtual T eval() const = 0;
     virtual void eexpr_outstanding_put( const T val ) const = 0;
-    //virtual ~EExprBase() {}
 };
 
 template <typename T> class BExprBase
-#ifndef RMACXX_USE_CLASSIC_HANDLES 
-: ExprBase<T>
-#endif
 {
 public:
     virtual int fillInto( T* buf ) const = 0;
     virtual void bexpr_outstanding_put( const T* buf ) const = 0;
-    //virtual ~BExprBase() {}
 };
-
 
 // class base templates
 

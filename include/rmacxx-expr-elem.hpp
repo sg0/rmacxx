@@ -2,13 +2,27 @@
 // a reference
 // required to wrap the window object
 // to create an EExpr object
+//#define WrapEval(str,body) inline T eval_core() const body inline T eval() const {auto val = this->eval_core();std::cout << str << val << std::endl; return val; }
+#define WrapEval(str,body) inline T eval() const body
+
+// NOTE: It is ok here to capture by value since the expression data needs to be stored to outlive the >> call
+#define Eval(cap,lhs) do{ \
+    exprid id = FuturesManager<T>::instance().new_expr(\
+        std::async(std::launch::deferred,[cap,*this]{\
+        lhs = this->eval();\
+    }));\
+    this->block_on_expr(id);\
+}while(0);
+
 template <typename T, class WIN>
 class RefEExpr
 {
 public:
     RefEExpr( WIN const& win ) : win_( win ) {}
 
-    inline T eval() const { return win_.eval(); }
+
+//    inline T eval() const { return win_.eval(); }
+    WrapEval("RefEval",{return win_.eval();})
     inline bool is_win_b() const { return win_.is_win_b(); }
     inline WinCompletion completion() const { return win_.completion(); }
     inline void flush_win() const { win_.flush_win(); }
@@ -31,7 +45,8 @@ class EExpr : public EExprBase<T>
 public:
     explicit EExpr( V v ) : v_( v ) {}
 
-    inline T eval() const { return v_.eval(); }
+//    inline T eval() const { return v_.eval(); }
+    WrapEval("EExprEval",{return v_.eval();})
     inline bool is_win_b() const { return v_.is_win_b(); }
     inline WinCompletion completion() const { return v_.completion(); }
     inline void flush_win() const { v_.flush_win(); }
@@ -140,9 +155,9 @@ public:
 
 #endif
 #else
-    //! TODO: Replace handles here
+            //! TODO: Replace handles here
+            Eval(&d,d);
 #endif
-
         }
     }
 
@@ -157,8 +172,11 @@ public:
         // post remaining gets for current
         // object
         eexpr_outstanding_gets();
+#if defined(RMACXX_USE_CLASSIC_HANDLES)
         T* c = static_cast<T*>( Handles<T>::instance().get_eexpr_ptr( sizeof( T ) ) );
-
+#else
+        T* c =FuturesManager<T>::instance().allocate(1);
+#endif
         // try to use preallocated store for intermediate object
 #if defined(RMACXX_EEXPR_USE_PLACEMENT_NEW_ALWAYS)
 #else
@@ -198,7 +216,8 @@ public:
 
 #endif
 #else
-    //! TODO: Replace handles here
+            //! TODO: Replace handles here
+            Eval(c,*c);
 #endif
         }
 
@@ -221,14 +240,18 @@ public:
             // if LOCAL_FLUSH
             if ( win.is_win_b() )
             {
+#if defined(RMACXX_USE_CLASSIC_HANDLES)
 #if defined(RMACXX_EEXPR_USE_PLACEMENT_NEW_ALWAYS)
                 Handles<T>::instance().eexpr_handles_.emplace_back( c );
 #else
                 Handles<T>::instance().eexpr_handles_.emplace_back( c, is_placed );
 
 #endif
+#else
+                //TODO: Futures for local flush
+#endif
             }
-
+#if defined(RMACXX_USE_CLASSIC_HANDLES)
 #if defined(RMACXX_EEXPR_USE_PLACEMENT_NEW_ALWAYS)
             Handles<T>::instance().eexpr_handles_.
             emplace_back( new ( static_cast<EExpr<T,W>*>( Handles<T>::instance().
@@ -248,6 +271,9 @@ public:
                 emplace_back( new ( mem ) EExpr<T,W>( win ), true );
             }
 
+#endif
+#else
+            //TODO: Futures for manual flush
 #endif
         }
     }
@@ -271,7 +297,8 @@ public:
         a_.block_on_expr(expr);
         b_.block_on_expr(expr);
     }
-    inline T eval() const { return OP::apply( a_.eval(), b_.eval() ); }
+//    inline T eval() const { return OP::apply( a_.eval(), b_.eval() ); }
+    WrapEval("OpEval",{return OP::apply( a_.eval(), b_.eval() );})
 
     inline bool is_win_b() const
     {
@@ -302,13 +329,16 @@ public:
     { a_.eexpr_outstanding_gets(); }
     inline void block_on_expr(exprid expr) const { a_.block_on_expr(expr); }
 
-    inline T eval() const
-    {
+//    inline T eval() const
+//    {
+//        if ( c_left_ ) return OP::apply( c_, a_.eval() );
+//
+//        return OP::apply( a_.eval(), c_ );
+//    }
+    WrapEval("OpEval", {
         if ( c_left_ ) return OP::apply( c_, a_.eval() );
-
         return OP::apply( a_.eval(), c_ );
-    }
-
+    })
     inline bool is_win_b() const { return a_.is_win_b(); }
 
     // thwart compiler errors
