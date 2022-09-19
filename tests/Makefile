@@ -5,7 +5,7 @@ OBJ_SUFFIX  =.o
 BINS       := $(patsubst %,%$(PRG_SUFFIX),$(PRGS))
 OBJS       := $(patsubst %,%$(OBJ_SUFFIX),$(PRGS))
 
-CXXFLAGS = -O3 -Wall -std=c++14 -pthread -I../include -D_GNU_SOURCE -DTEST_OVERHEAD
+CXXFLAGS = -O3 -Wall -std=c++20 -pthread -I../include -D_GNU_SOURCE -DTEST_OVERHEAD
 LDFLAGS  =
 MPICXX 	 =  mpic++
 RUNCMD 	 =  mpiexec
@@ -21,11 +21,11 @@ BIN = $@
 %$(PRG_SUFFIX): %$(OBJ_SUFFIX)
 	echo "::group::$(BIN)"
 	($(MPICXX) $(CXXFLAGS) $^ -o $(BIN) $(LDFLAGS)||(echo "::endgroup::"; exit 2));
-	($(RUNCMD) -np $(NPROCS) ./$(BIN)||(echo "::endgroup::";exit 2));
+	($(RUNCMD) -np $(or $(subst .,,$(suffix $(basename $^))),$(NPROCS)) ./$(BIN)||(echo "::endgroup::";exit 2));
 	echo "::endgroup::"
 
 
-check: $(OBJS) $(BINS) clean
+check: $(OBJS) $(BINS)
 
 clean:
-	$(RM) **$(PRG_SUFFIX) **$(OBJ_SUFFIX)
+	$(RM) **/*$(PRG_SUFFIX) **/*$(OBJ_SUFFIX)
