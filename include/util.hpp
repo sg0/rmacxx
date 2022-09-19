@@ -1,3 +1,5 @@
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wc++17-extensions"
 #pragma once
 #ifndef UTIL_HPP
 #define UTIL_HPP
@@ -121,9 +123,11 @@ typedef enum
 #endif
 
 // element-wise arithmetic operations
-template <typename T> struct Add { static T apply( T l, T r ) { return ( l+r ); } };
-template <typename T> struct Sub { static T apply( T l, T r ) { return ( l-r ); } };
-template <typename T> struct Mul { static T apply( T l, T r ) { return ( l*r ); } };
-template <typename T> struct Div { static T apply( T l, T r ) { return ( l/r ); } };
+template <typename T> struct Add { static const char S='+'; static T apply( T l, T r ) { return ( l+r ); } };
+template <typename T> struct Sub { static const char S='-'; static T apply( T l, T r ) { return ( l-r ); } };
+template <typename T> struct Mul { static const char S='*'; static T apply( T l, T r ) { return ( l*r ); } };
+template <typename T> struct Div { static const char S='/'; static T apply( T l, T r ) { return ( l/r ); } };
 
 #endif
+
+#pragma clang diagnostic pop

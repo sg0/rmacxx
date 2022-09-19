@@ -1,4 +1,7 @@
 .DS_Store
 .vscode
-tests/**.o
-tests/**.test
+tests/**/*.o
+tests/**/*.o
+tests/**/*.test
+/.idea
+/cmake-build-debug

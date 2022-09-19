@@ -24,9 +24,11 @@ class Window<T, GLOBAL_VIEW, wuse_, wcmpl_, watmc_, wtsft_>
     #define GW_RESERVE_EXPR() {}
     #define GW_CLEAR_EXPR() {}
 #else
-    #define GWFLUSH() do {\
-        if ( is_expr_elem_ ) EExpr<T, WIN>::flush();\
-        if ( is_expr_bulk_ ) BExpr<T, WIN>::flush();\
+    //TODO: FIX AND REIMPLEMENT FLUSH
+    #define GWFLUSH() do{ \
+        for(auto expr:expressions_){ \
+            FuturesManager<T>::instance().unblock_expr(expr);\
+        }                 \
         flush_expr();\
     } while(0)
     #define GW_RESERVE_EXPR() expressions_.reserve(DEFAULT_EXPR_COUNT)
@@ -849,7 +851,7 @@ public:
         if ( ndims_ > 1 )
         {
             std::vector<int> new_hi( ndims_ ), new_lo( ndims_ );
-            int total_count = 0;
+//            int total_count = 0;
             new_lo = lo_;
             disp_ = 0;
 

@@ -22,9 +22,11 @@ class Window<T, LOCAL_VIEW, wuse_, wcmpl_, watmc_, wtsft_>
     #define LW_RESERVE_EXPR() {}
     #define LW_CLEAR_EXPR() {}
 #else
-    #define LWFLUSH() do {\
-        if ( is_expr_elem_ ) EExpr<T, WIN>::flush();\
-        if ( is_expr_bulk_ ) BExpr<T, WIN>::flush();\
+    //TODO: FIX AND REIMPLEMENT FLUSH
+    #define LWFLUSH() do{ \
+        for(auto expr:expressions_){ \
+            FuturesManager<T>::instance().unblock_expr(expr);\
+        }                 \
         flush_expr();\
     } while(0)
     #define LW_RESERVE_EXPR() expressions_.reserve(DEFAULT_EXPR_COUNT)
@@ -1031,7 +1033,6 @@ public:
         lock();
         
         int& target = expr_info_1D_[expr_xfer1D_counter_];
-
         if ( expr_size_counter_ < PREALLOC_BUF_SZ )
         {
             flush_local( target );

@@ -1,5 +1,16 @@
 // expression class that takes
 // a reference (to a window)
+// #define WrapFill(str,body) inline int fillInto_core(T* buf) const body inline int fillInto(T* buf) const {auto val = this->fillInto_core(buf);std::cout << str << buf[0] << std::endl; return val; }
+#define WrapFill(str,body) inline int fillInto(T* buf) const body
+
+#define EvalBulk(cap,buf) do{ \
+    exprid id = FuturesManager<T>::instance().new_expr( \
+        std::async(std::launch::deferred,[cap,*this]{   \
+            this->fillInto( buf ); \
+        })); \
+    this->block_on_expr(id); \
+}while(0);
+
 template <typename T, class P>
 class RefBExpr
 {
@@ -12,6 +23,7 @@ public:
     inline WinCompletion completion() const { return p_.completion(); }
     inline void flush_expr() const { return p_.flush_expr(); }
     inline void flush_win() const { return p_.flush_win(); }
+    inline void block_on_expr(exprid expr) const { p_.block_on_expr(expr); }
 
     inline void bexpr_outstanding_gets() const
     { p_.bexpr_outstanding_gets(); }
@@ -20,7 +32,8 @@ public:
     inline void expr_ignore_last_get() const
     { p_.expr_ignore_last_get(); }
 
-    int fillInto( T* buf ) const { return p_.fillInto( buf ); }
+    WrapFill("WindowFill[0]: ",{ return p_.fillInto( buf ); })
+//    int fillInto( T* buf ) const { return p_.fillInto( buf ); }
 private:
     P const& p_;
 };
@@ -38,6 +51,7 @@ public:
     inline WinCompletion completion() const { return v_.completion(); }
     inline void flush_expr() const { return v_.flush_expr(); }
     inline void flush_win() const { return v_.flush_win(); }
+    inline void block_on_expr(exprid expr) const { v_.block_on_expr(expr); }
 
     inline void bexpr_outstanding_gets() const
     { v_.bexpr_outstanding_gets(); }
@@ -46,7 +60,8 @@ public:
     inline void expr_ignore_last_get() const
     { v_.expr_ignore_last_get(); }
 
-    int fillInto( T* buf ) const { return v_.fillInto( buf ); }
+    WrapFill("BExpr[0]: ",{ return v_.fillInto( buf ); })
+//    int fillInto( T* buf ) const { return v_.fillInto( buf ); }
 #ifdef RMACXX_USE_CLASSIC_HANDLES
     inline static void flush()
     {
@@ -127,7 +142,7 @@ public:
             // object, and will go out of scope if not stored
 
             // try to use preallocated store for intermediate object
-
+#if defined(RMACXX_USE_CLASSIC_HANDLES)
 #if defined(RMACXX_BEXPR_USE_PLACEMENT_NEW_ALWAYS)
             Handles<T>::instance().bexpr_handles_.
             emplace_back( new ( static_cast<BExpr<T,V>*>( Handles<T>::instance().
@@ -147,6 +162,9 @@ public:
                 emplace_back( new ( mem ) BExpr<T,V>( v_ ), buf, true );
             }
 
+#endif
+#else
+            EvalBulk(&buf,buf);
 #endif
         }
     }
@@ -165,7 +183,11 @@ public:
         
         // buffer for storing results of expression
         // and origin buffer for put
+#if defined(RMACXX_USE_CLASSIC_HANDLES)
         T* buf = static_cast<T*>( Handles<T>::instance().get_bexpr_ptr( sizeof( T )*win.get_count() ) );
+#else
+        T* buf =FuturesManager<T>::instance().allocate(win.get_count());
+#endif
 
 #if defined(RMACXX_BEXPR_USE_PLACEMENT_NEW_ALWAYS)
 #else
@@ -183,6 +205,7 @@ public:
             fillInto( buf );
         else
         {
+#if defined(RMACXX_USE_CLASSIC_HANDLES)
 #if defined(RMACXX_BEXPR_USE_PLACEMENT_NEW_ALWAYS)
             Handles<T>::instance().bexpr_handles_.
             emplace_back( new ( static_cast<BExpr<T,V>*>( Handles<T>::instance().
@@ -202,6 +225,10 @@ public:
                 emplace_back( new ( mem ) BExpr<T,V>( v_ ), buf, true );
             }
 
+#endif
+#else
+            //! TODO: Replace handles here
+            EvalBulk(&buf,buf);
 #endif
 
         }
@@ -225,14 +252,21 @@ public:
             // stage expression intermediate result
             if ( win.is_win_b() )
             {
+
+#if defined(RMACXX_USE_CLASSIC_HANDLES)
 #if defined(RMACXX_BEXPR_USE_PLACEMENT_NEW_ALWAYS)
                 Handles<T>::instance().bexpr_handles_.emplace_back( buf );
 #else
                 Handles<T>::instance().eexpr_handles_.emplace_back( buf, is_placed );
 
 #endif
+#else
+                //! TODO: Replace handles here
+                EvalBulk(&buf,buf);
+#endif
             }
 
+#if defined(RMACXX_USE_CLASSIC_HANDLES)
 #if defined(RMACXX_BEXPR_USE_PLACEMENT_NEW_ALWAYS)
             Handles<T>::instance().bexpr_handles_.
             emplace_back( new ( static_cast<BExpr<T,W>*>( Handles<T>::instance().
@@ -253,6 +287,10 @@ public:
                 emplace_back( new ( mem ) BExpr<T,W>( win ), true );
             }
 
+#endif
+#else
+            //! TODO: Replace handles here
+            EvalBulk(&buf, buf);
 #endif
         }
     }
@@ -276,20 +314,33 @@ public:
     }
 
     inline void bexpr_outstanding_gets() const { u_.bexpr_outstanding_gets(); }
+    inline void block_on_expr(exprid expr) const { u_.block_on_expr(expr); }
 
     inline int get_count() const { return u_.get_count(); }
     inline bool is_win_b() const { return u_.is_win_b(); }
     inline T* get_expr_bptr() { return u_.get_expr_bptr(); }
 
-    int fillInto( T* buf ) const
-    {
+//    int fillInto( T* buf ) const
+//    {
+//        int count = u_.fillInto( buf );
+//
+//        for ( int i = 0; i < count; i++ )
+//            buf[i] = operator()( i );
+//
+//        return count;
+//    }
+    WrapFill("WinScalar[0]: ",{
+        std::cout << "ScalarOp: "<< OP::S<<std::endl;
+        std::cout << "Scalar: "<<this->c_<<std::endl;
+
         int count = u_.fillInto( buf );
 
         for ( int i = 0; i < count; i++ )
             buf[i] = operator()( i );
 
         return count;
-    }
+    })
+
 
     // thwart compiler errors
     void bexpr_outstanding_put( const T* buf ) const {}
@@ -303,12 +354,15 @@ private:
     bool c_left_;
 };
 
+class instance;
+
 // window element-wise operations
 template <typename T, class U, class V, class OP>
 class BExprWinElemOp
 {
 public:
     explicit BExprWinElemOp( U u, V v ): u_( u ), v_( v ) {}
+    inline void block_on_expr(exprid expr) const { u_.block_on_expr(expr);v_.block_on_expr(expr); }
 
     inline void bexpr_outstanding_gets() const
     {
@@ -328,15 +382,24 @@ public:
     }
 
     inline int get_count() const { return u_.get_count(); }
-    
-    int fillInto( T* buf ) const
+
+    WrapFill("WinOp[0]: ",{
+        std::cout << "Op: "<< OP::S<<std::endl;
+        return fi(buf);
+    })
+    int fi( T* buf ) const
+
+//    int fillInto( T* buf ) const
     {
         T* cache = nullptr;
         const int count = v_.fillInto( buf );
 
         // try to use placement_new buf
+#if defined(RMACXX_USE_CLASSIC_HANDLES)
         T* mem = static_cast<T*>( Handles<T>::instance().get_bexpr_ptr( sizeof( T )*count ) );
-
+#else
+        T* mem = FuturesManager<T>::instance().allocate(count);
+#endif
         if ( mem == nullptr )
             cache = new T[count];
         else
