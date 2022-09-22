@@ -2,3 +2,5 @@
 .vscode
 tests/**/*.o
 tests/**/*.test
+CMakeFiles
+build
