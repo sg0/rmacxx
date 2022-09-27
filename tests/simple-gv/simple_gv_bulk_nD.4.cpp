@@ -55,8 +55,8 @@ int main(int argc, char *argv[])
     for(int i = 0; i < 15; i++)
         data[i] = 3;
 
-    win({2,3},{6,5}) << data.data();
-    
+    // win({2,3},{6,5}) << data.data();
+    win({0,0},{4,6}) << data.data();
     win.flush();
     
     win.print("After put...");

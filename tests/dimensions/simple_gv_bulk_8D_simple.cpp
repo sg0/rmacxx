@@ -14,11 +14,11 @@ int main(int argc, char *argv[])
     if (rank == 0) // process #0
     { 
         dims[0] = 0; dims[1] = 0; dims[2] = 0; dims[3] = 0; dims[4] = 0; dims[5] = 0; dims[6] = 0; dims[7] = 0;
-        pgrid[0] = 1; pgrid[1] = 1; pgrid[2] = 1; pgrid[3] = 1; pgrid[4] = 1; pgrid[5] = 1; pgrid[6] = 1; pgrid[7] = 1;
+        pgrid[0] = 1; pgrid[1] = 3; pgrid[2] = 3; pgrid[3] = 3; pgrid[4] = 3; pgrid[5] = 3; pgrid[6] = 3; pgrid[7] = 3;
     }
     else // process #1
     {
-        dims[0] = 2; dims[1] = 2; dims[2] = 2; dims[3] = 2; dims[4] = 2; dims[5] = 2; dims[6] = 2; dims[7] = 2;
+        dims[0] = 2; dims[1] = 0; dims[2] = 0; dims[3] = 0; dims[4] = 0; dims[5] = 0; dims[6] = 0; dims[7] = 0;
         pgrid[0] = 3; pgrid[1] = 3; pgrid[2] = 3; pgrid[3] = 3; pgrid[4] = 3; pgrid[5] = 3; pgrid[6] = 3; pgrid[7] = 3;
     }
            
@@ -40,11 +40,11 @@ int main(int argc, char *argv[])
     win.print("Current...");
     
     // put
-    std::vector<int> data(6561);
-    for(int i = 0; i < 6561; i++)
+    std::vector<int> data(256);
+    for(int i = 0; i < 256; i++)
         data[i] = 3;
 
-    win({0,0,0,0,0,0,0,0},{2,2,2,2,2,2,2,2}) << data.data();
+    win({1,1,1,1,1,1,1,1},{2,2,2,2,2,2,2,2}) << data.data(); //inner cube is 2x2x2x2x2x2x2x2, 256 total
     
     win.flush();
 
