@@ -33,8 +33,15 @@ int main(int argc, char *argv[])
         lo[0] = 10; lo[1] = 10; lo[2] = 0;
         hi[0] = 19; hi[1] = 19; hi[2] = 9;
     } 
-
     rmacxx::Window<int, GLOBAL_VIEW> win(lo, hi);
+    
+    if (win.size() != 4)
+    {
+        std::cout << "Number of processes should be exactly 4. Aborting..." << std::endl;
+        MPI_Abort(MPI_COMM_WORLD, -99);
+    }
+
+
     win.fill(1);
 
     if (win.rank() == 0) {

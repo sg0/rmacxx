@@ -6,25 +6,25 @@
 int main(int argc, char *argv[])
 {
 
-	MPI_Init(&argc, &argv);
+	// MPI_Init(&argc, &argv);
 
-	int num1, num2, num3, num4, num5;
+	// int num1, num2, num3, num4, num5;
 
-    rmacxx::Window<int, LOCAL_VIEW> win({10,10});
-    win.fill(1);
+    // rmacxx::Window<int, LOCAL_VIEW> win({10,10});
+    // win.fill(1);
 
-    if (win.rank() == 0) {
-        std::list<int> buff(2*5);
-        win(0, {1,2},{2,6}) << buff.data();
-    }
+    // if (win.rank() == 0) {
+    //     std::list<int> buff(2*5);
+    //     win(0, {1,2},{2,6}) << buff.data();
+    // }
 
-    win.flush();
+    // win.flush();
 
-    win.print("After put...");
+    // win.print("After put...");
 
-    win.wfree();
+    // win.wfree();
 
-	MPI_Finalize();
+	// MPI_Finalize();
 
 	return 0;
 }

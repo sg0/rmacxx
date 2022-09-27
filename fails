@@ -1,0 +1,9 @@
+dimensions/simple_gv_bulk_3D_subarray.test - Done
+dimensions/simple_gv_bulk_4D_simple.test - Done
+dimensions/simple_gv_bulk_5D_simple.test - Done
+expr-elem/dummy-test-gv.test - Done
+general/failure-test-gaps-3D.test - Done
+
+expr-elem/failure-test.o - COMPILATION ERROR (expected)
+dimensions/simple_gv_bulk_9D_subarray.4.test - SEGFAULT (might need to debug subarray stuff)
+dimensions/simple_gv_bulk_9D_subarray_old.4.test - MPI ERRORS : Something weird is happening and we need to figure out why and how to fix it

@@ -45,13 +45,8 @@ int main(int argc, char *argv[])
         data[i] = 3;
     }
 
-<<<<<<< HEAD:tests/dimensions/simple_gv_bulk_2D_simple.cpp
     win({1,1},{2,2}) << data.data(); //inner cube is 2x2, 4 total
     
-=======
-    // win({2,3},{6,5}) << data.data();
-    win({0,0},{4,6}) << data.data();
->>>>>>> db47f00 (Update build styem):tests/simple-gv/simple_gv_bulk_nD_cart.4.cpp
     win.flush();
 
     int nums[4];
