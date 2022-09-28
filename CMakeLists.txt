@@ -21,12 +21,12 @@ target_include_directories(rmacxx INTERFACE include/)
 
 target_compile_features(${PROJECT_NAME} INTERFACE cxx_std_20)
 
-file(GLOB SOURCE_FILES ./tests/*/*.cpp)
+file(GLOB SOURCE_FILES ${CMAKE_SOURCE_DIR}/tests/*/*.cpp)
 
 enable_testing()
 include(CTest)
 
-create_test_sourcelist (Tests CommonCxxTests.cpp ${SOURCE_FILES} EXTRA_INCLUDE include/)
+create_test_sourcelist (Tests CommonCxxTests.cpp ${SOURCE_FILES})
 
 # add the executable
 add_executable (CommonCxxTests ${Tests})
