@@ -1,9 +1,14 @@
+#pragma once
+#ifndef FUNCTIONS_HPP
+#define FUNCTIONS_HPP
+
 #include <iostream>
 #include <vector>
 #include <tuple>
 
 // Prints a vector in a readable format
-template<typename T> std::string print_vector(std::vector<T> vec) {
+template<typename T>
+static std::string print_vector(std::vector<T> vec) {
     std::cout<<"[ ";
     for (int i = 0; i < vec.size(); i++) {
         std::cout<<vec[i]<<" ";
@@ -13,7 +18,7 @@ template<typename T> std::string print_vector(std::vector<T> vec) {
 }
 
 // Return whether an overlap has occurred, and if so then return the starts and ends of it
-inline std::tuple<int, std::vector<int>, std::vector<int>> check_overlap(std::vector<int> wlo, std::vector<int> whi, std::vector<int> plo, std::vector<int> phi) {
+static inline std::tuple<int, std::vector<int>, std::vector<int>> check_overlap(std::vector<int> wlo, std::vector<int> whi, std::vector<int> plo, std::vector<int> phi) {
     std::vector<int> starts;
     std::vector<int> ends;
 
@@ -84,7 +89,7 @@ inline std::tuple<int, std::vector<int>, std::vector<int>> check_overlap(std::ve
 
 
 // Given the size of the window and the lows and highs of the processes, return whether the window has no gaps
-bool check_gaps(std::vector<int> wsize, std::vector<std::vector<int>> plos, std::vector<std::vector<int>> phis) {
+static bool check_gaps(std::vector<int> wsize, std::vector<std::vector<int>> plos, std::vector<std::vector<int>> phis) {
     
     //size checks
     if (plos.size() != phis.size()) {
@@ -208,3 +213,5 @@ bool check_gaps(std::vector<int> wsize, std::vector<std::vector<int>> plos, std:
 
     return wlos.size() == 0;
 }
+
+#endif // FUNCTIONS_HPP
