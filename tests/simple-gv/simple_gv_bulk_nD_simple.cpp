@@ -2,58 +2,58 @@
 
 int main(int argc, char *argv[])
 {
-    // int rank;
+    int rank;
 
-    // MPI_Init( &argc, &argv );
-    // MPI_Comm_rank( MPI_COMM_WORLD, &rank );
+    MPI_Init( &argc, &argv );
+    MPI_Comm_rank( MPI_COMM_WORLD, &rank );
     
-    // std::vector<int> dims(2), pgrid(2);
+    std::vector<int> los(2), his(2);
 
-    // // create window
-    // if (rank == 0) // process #0
-    // { 
-    //     dims[0] = 2; dims[1] = 2;
-    //     pgrid[0] = 0; pgrid[1] = 0;
-    // }
-    // else // process #1
-    // {
-    //     dims[0] = 2; dims[1] = 2;
-    //     pgrid[0] = 0; pgrid[1] = 1;
-    // }
+    // create window
+    if (rank == 0) // process #0
+    { 
+        los[0] = 0; los[1] = 0;
+        his[0] = 1; his[1] = 0;
+    }
+    else // process #1
+    {
+        los[0] = 0; los[1] = 1;
+        his[0] = 1; his[1] = 1;
+    }
            
-    // rmacxx::Window<int,GLOBAL_VIEW> win(dims, pgrid);
+    rmacxx::Window<int,GLOBAL_VIEW> win(los, his);
 
-    // if (win.size() != 2)
-    // {
-    //     std::cout << "Number of processes should be exactly 2. Aborting..." << std::endl;
-    //     MPI_Abort(MPI_COMM_WORLD, -99);
-    // }
+    if (win.size() != 2)
+    {
+        std::cout << "Number of processes should be exactly 2. Aborting..." << std::endl;
+        MPI_Abort(MPI_COMM_WORLD, -99);
+    }
 
-    // // print data ranges per process
-    // win.print_ranges();
+    // print data ranges per process
+    win.print_ranges();
 
-    // // fill window buffer
-    // win.fill(1);
+    // fill window buffer
+    win.fill(1);
 
-    // // print shape
-    // win.print("Current...");
+    // print shape
+    win.print("Current...");
     
-    // // put
-    // std::vector<int> data(4);
-    // for(int i = 0; i < 4; i++)
-    //     data[i] = 3;
+    // put
+    std::vector<int> data(4);
+    for(int i = 0; i < 4; i++)
+        data[i] = 3;
 
-    // win({0,1},{1,2}) << data.data();
+    win({0,0},{1,1}) << data.data();
     
-    // win.flush();
+    win.flush();
     
-    // win.print("After put...");
+    win.print("After put...");
 
-    // win.barrier();
+    win.barrier();
     
-    // win.wfree();
+    win.wfree();
 
-    // MPI_Finalize();
+    MPI_Finalize();
 
     return 0;
 }

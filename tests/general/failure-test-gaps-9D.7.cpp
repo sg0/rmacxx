@@ -51,6 +51,6 @@ int main(int argc, char *argv[])
         MPI_Finalize();
        exception_was_thrown = true;
     }
-    std::cout<<"Time elapsed: "<<t1 - t0<<std::endl;
+    std::cout<<"Time elapsed: "<<t1 - t0<<std::endl;2
     assert(exception_was_thrown);
 }
