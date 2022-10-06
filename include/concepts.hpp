@@ -21,18 +21,21 @@ constexpr bool same_size(T it1,  U it2) {
     return it1.size() == it2.size();
 }
 
+// Ensure the coordinates are valid
+//template<class T>
+//constexpr bool check_coords(rmacxx::Window<T, GLOBAL_VIEW> window, rmacxx::RMACXX_Subarray_t<T, GLOBAL_VIEW> subarray) {
 
-
+//}
 
 
 
 
 // ensure we pass in valid arguments into the << operator
 // area in window and area in subarray must be same size, subarray end coords must be greater than start
-template<class T, class W, class S>
-concept CheckCoords = requires( W win, S sub /*, std::vector<int> nlo, std::vector<int> nhi, std::vector<int> sizes, int i */) {
-   { win } -> std::same_as<rmacxx::Window<T, GLOBAL_VIEW>>;
-   { sub } -> std::same_as<rmacxx::RMACXX_Subarray_t<T, GLOBAL_VIEW>>;
+// template<class T, class W, class S>
+// concept CheckCoords = requires( W win, S sub /*, std::vector<int> nlo, std::vector<int> nhi, std::vector<int> sizes, int i */) {
+//    { win } -> std::same_as<rmacxx::Window<T, GLOBAL_VIEW>>;
+//    { sub } -> std::same_as<rmacxx::RMACXX_Subarray_t<T, GLOBAL_VIEW>>;
 
     /*
     //if we're given size
@@ -58,4 +61,4 @@ concept CheckCoords = requires( W win, S sub /*, std::vector<int> nlo, std::vect
     }
     */
 
-};
+//};

@@ -1,5 +1,6 @@
 #include "rmacxx.hpp"
 #include <math.h>
+#include <cassert>
 
 //THIS TEST MUST NOT USE THE RMACXX_SUBARRAY_USE_END_COORDINATES FLAG
 
@@ -91,8 +92,11 @@ int main(int argc, char *argv[])
         local_buffer[i + formula_result] = 3;
     }
 
-    // create subarray type for global transfer    //starts             //sizes
-    rmacxx::RMACXX_Subarray_t<int,GLOBAL_VIEW> sub({extract_offset[0], extract_offset[1], extract_offset[2]},{transfer_dims[0],transfer_dims[1],transfer_dims[2]});
+    // create subarray type for global transfer                                                
+    rmacxx::RMACXX_Subarray_t<int,GLOBAL_VIEW> sub(
+        {extract_offset[0], extract_offset[1], extract_offset[2]},  //starts  
+        {transfer_dims[0],transfer_dims[1],transfer_dims[2]}        //sizes
+    );
 
     // put
     std::cout<<"waddup"<<std::endl;

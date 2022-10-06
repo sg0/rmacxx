@@ -1797,18 +1797,19 @@ public:
 
         //std::vector<int> nlo, nhi;
 
-#ifdef RMACXX_SUBARRAY_USE_END_COORDINATES
+#ifdef RMACXX_SUBARRAY_USE_END_COORDINATES  // ---- USING END COORDINATES ----, we want to check limits differently when ends is used vs not
+#ifdef DEBUG_CHECK_LIMITS
         // if we're given inclusive coordinates
         std::vector<int> nhi;
         nhi.insert(nhi.end(), store_hi.begin(), store_hi.end());
-#ifdef DEBUG_CHECK_LIMITS
         if (origin.sizes_ != nhi) {
             //failed check
             std::cout << "Coordinates not equal" << std::endl;
             abort();
         }
 #endif
-#else
+#else                                       // ---- NOT USING END COORDINATES ----
+#ifdef DEBUG_CHECK_LIMITS
         //if we're given size
         std::vector<int> nlo, nhi;
         nlo.insert(nlo.end(), store_lo.begin(), store_lo.end());
@@ -1819,7 +1820,6 @@ public:
         for (int i = 0; i < nlo.size(); i++) {
             sizes[i] = nhi[i] - nlo[i] + 1;
         }
-#ifdef DEBUG_CHECK_LIMITS
         if (origin.sizes_ != sizes) {
             //failed check
             std::cout << "Coordinates not equal" << std::endl;
