@@ -10,7 +10,7 @@
 #include <cstring>
 
 // TODO: Remove feature guard default once development is complete
-#define RMACXX_USE_CLASSIC_HANDLES
+// #define RMACXX_USE_CLASSIC_HANDLES
 
 #ifndef RMACXX_USE_CLASSIC_HANDLES
 #include <unordered_map>
@@ -233,7 +233,7 @@ public:
     }
     inline exprid new_expr(std::future<void> future){
         exprid new_id = this->next_id_++;
-        std::cout<<"Creating expression '" << new_id<<"'"<<std::endl;
+        // std::cout<<"Creating expression '" << new_id<<"'"<<std::endl;
         expression_liveness_[new_id] = true;
         expression_completion_futures_[new_id] = std::move(future);
         return new_id;
@@ -242,15 +242,22 @@ public:
         expression_liveness_[id] = false;// Mark that it has been done already
 //        expression_completion_futures_[id].~future();// Delete the future
     }
+    inline void block_expr(exprid expr_to_block){
+        expression_blocking_count_[expr_to_block]+=1;
+    }
     inline void unblock_expr(exprid id){
-        std::cout<<"Unblocking expression (" << id <<"/"<<this->next_id_<<")"<<(expression_liveness_[id]?"L":"D")<<std::endl;
+        std::cout<<"Unblocking expression (" << id <<"/"<<this->next_id_<<")["<<(expression_liveness_[id]?"Is Alive]":"Is Dead]")<<std::endl;
+        std::cout<<"{n="<<expression_blocking_count_[id]<<"}"<<std::endl;
         if(expression_liveness_[id]){
-            if((expression_blocking_count_[id]--) == 0){
-                std::cout<<"Getting.."<<std::endl;
+            if(expression_blocking_count_[id] > 0){
+                expression_blocking_count_[id] -= 1;
+            }
+            if(expression_blocking_count_[id] == 0){
+                std::cout<<"Future "<<id<<" is now waiting on: ["<< expression_blocking_count_[id]<<"]" <<std::endl;
                 expression_completion_futures_[id].get(); // Complete operation
-                std::cout<<"Gotted!"<<std::endl;
+                // std::cout<<"Gotted!"<<std::endl;
                 this->remove_expr(id);
-                std::cout<<"Goned!"<<std::endl;
+                // std::cout<<"Goned!"<<std::endl;
             }
         }
     }

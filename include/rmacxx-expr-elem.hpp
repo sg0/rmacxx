@@ -2,17 +2,6 @@
 // a reference
 // required to wrap the window object
 // to create an EExpr object
-//#define WrapEval(str,body) inline T eval_core() const body inline T eval() const {auto val = this->eval_core();std::cout << str << val << std::endl; return val; }
-#define WrapEval(str,body) inline T eval() const body
-
-// NOTE: It is ok here to capture by value since the expression data needs to be stored to outlive the >> call
-#define Eval(cap,lhs) do{ \
-    exprid id = FuturesManager<T>::instance().new_expr(\
-        std::async(std::launch::deferred,[cap,*this]{\
-        lhs = this->eval();\
-    }));\
-    this->block_on_expr(id);\
-}while(0);
 
 template <typename T, class WIN>
 class RefEExpr
@@ -21,14 +10,14 @@ public:
     RefEExpr( WIN const& win ) : win_( win ) {}
 
 
-//    inline T eval() const { return win_.eval(); }
-    WrapEval("RefEval",{return win_.eval();})
+   inline T eval() const { return win_.eval(); }
     inline bool is_win_b() const { return win_.is_win_b(); }
     inline WinCompletion completion() const { return win_.completion(); }
     inline void flush_win() const { win_.flush_win(); }
     inline void flush_expr() const { win_.flush_expr(); }
+#ifndef RMACXX_USE_CLASSIC_HANDLES
     inline void block_on_expr(exprid expr) const { win_.block_on_expr(expr); }
-
+#endif
     inline void eexpr_outstanding_gets() const
     { win_.eexpr_outstanding_gets(); }
     inline void eexpr_outstanding_put( const T val ) const
@@ -45,14 +34,14 @@ class EExpr : public EExprBase<T>
 public:
     explicit EExpr( V v ) : v_( v ) {}
 
-//    inline T eval() const { return v_.eval(); }
-    WrapEval("EExprEval",{return v_.eval();})
+   inline T eval() const { return v_.eval(); }
     inline bool is_win_b() const { return v_.is_win_b(); }
     inline WinCompletion completion() const { return v_.completion(); }
     inline void flush_win() const { v_.flush_win(); }
     inline void flush_expr() const { v_.flush_expr(); }
+#ifndef RMACXX_USE_CLASSIC_HANDLES
     inline void block_on_expr(exprid expr) const { v_.block_on_expr(expr); }
-
+#endif
     inline void eexpr_outstanding_gets() const
     { v_.eexpr_outstanding_gets(); }
     inline void eexpr_outstanding_put( const T val ) const
@@ -128,8 +117,9 @@ public:
         // post gets
         eexpr_outstanding_gets();
 
-        if ( is_win_b() )
+        if ( is_win_b() ){
             d = eval();
+        }
         else
         {
 #if defined(RMACXX_USE_CLASSIC_HANDLES)
@@ -155,8 +145,11 @@ public:
 
 #endif
 #else
-            //! TODO: Replace handles here
-            Eval(&d,d);
+            exprid id = FuturesManager<T>::instance().new_expr(
+                std::async(std::launch::deferred,[&d,*this]{
+                    d = this->eval();
+                }));
+            this->block_on_expr(id);
 #endif
         }
     }
@@ -172,28 +165,31 @@ public:
         // post remaining gets for current
         // object
         eexpr_outstanding_gets();
-#if defined(RMACXX_USE_CLASSIC_HANDLES)
-        T* c = static_cast<T*>( Handles<T>::instance().get_eexpr_ptr( sizeof( T ) ) );
-#else
-        T* c =FuturesManager<T>::instance().allocate(1);
-#endif
-        // try to use preallocated store for intermediate object
-#if defined(RMACXX_EEXPR_USE_PLACEMENT_NEW_ALWAYS)
-#else
-        if ( c == nullptr )
-        {
-            c = new T;
-            is_placed = false;
-        }
-#endif
+
+        #if defined(RMACXX_USE_CLASSIC_HANDLES)
+                T* c = static_cast<T*>( Handles<T>::instance().get_eexpr_ptr( sizeof( T ) ) );
+        #else
+                T* c =FuturesManager<T>::instance().allocate(1);
+        #endif
+                // try to use preallocated store for intermediate object
+        #if defined(RMACXX_EEXPR_USE_PLACEMENT_NEW_ALWAYS)
+        #else
+                if ( c == nullptr )
+                {
+                    c = new T;
+                    is_placed = false;
+                }
+        #endif
 
         // finish evaluation or store current object
         // for later evaluation
         if ( win.is_win_b() )
-            *c = eval();
+        {
+            // *c = eval();
+            win.eexpr_outstanding_put(eval());
+        }
         else
         {
-
 #if defined(RMACXX_USE_CLASSIC_HANDLES)
 #if defined(RMACXX_EEXPR_USE_PLACEMENT_NEW_ALWAYS)
             Handles<T>::instance().eexpr_handles_.
@@ -216,8 +212,12 @@ public:
 
 #endif
 #else
-            //! TODO: Replace handles here
-            Eval(c,*c);
+            exprid id = FuturesManager<T>::instance().new_expr(
+                std::async(std::launch::deferred,[c,*this,win]{
+                    *c = this->eval();
+                    win.eexpr_outstanding_put(*c);
+                }));
+            this->block_on_expr(id);
 #endif
         }
 
@@ -293,12 +293,13 @@ public:
         b_.eexpr_outstanding_gets();
     }
 
+#ifndef RMACXX_USE_CLASSIC_HANDLES
     inline void block_on_expr(exprid expr) const {
         a_.block_on_expr(expr);
         b_.block_on_expr(expr);
     }
-//    inline T eval() const { return OP::apply( a_.eval(), b_.eval() ); }
-    WrapEval("OpEval",{return OP::apply( a_.eval(), b_.eval() );})
+#endif
+   inline T eval() const { return OP::apply( a_.eval(), b_.eval() ); }
 
     inline bool is_win_b() const
     {
@@ -327,18 +328,15 @@ public:
 
     inline void eexpr_outstanding_gets() const
     { a_.eexpr_outstanding_gets(); }
+#ifndef RMACXX_USE_CLASSIC_HANDLES
     inline void block_on_expr(exprid expr) const { a_.block_on_expr(expr); }
+#endif
+   inline T eval() const
+   {
+       if ( c_left_ ) return OP::apply( c_, a_.eval() );
 
-//    inline T eval() const
-//    {
-//        if ( c_left_ ) return OP::apply( c_, a_.eval() );
-//
-//        return OP::apply( a_.eval(), c_ );
-//    }
-    WrapEval("OpEval", {
-        if ( c_left_ ) return OP::apply( c_, a_.eval() );
-        return OP::apply( a_.eval(), c_ );
-    })
+       return OP::apply( a_.eval(), c_ );
+   }
     inline bool is_win_b() const { return a_.is_win_b(); }
 
     // thwart compiler errors

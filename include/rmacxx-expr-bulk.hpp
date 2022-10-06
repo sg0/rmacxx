@@ -1,15 +1,5 @@
 // expression class that takes
 // a reference (to a window)
-// #define WrapFill(str,body) inline int fillInto_core(T* buf) const body inline int fillInto(T* buf) const {auto val = this->fillInto_core(buf);std::cout << str << buf[0] << std::endl; return val; }
-#define WrapFill(str,body) inline int fillInto(T* buf) const body
-
-#define EvalBulk(cap,buf) do{ \
-    exprid id = FuturesManager<T>::instance().new_expr( \
-        std::async(std::launch::deferred,[cap,*this]{   \
-            this->fillInto( buf ); \
-        })); \
-    this->block_on_expr(id); \
-}while(0);
 
 template <typename T, class P>
 class RefBExpr
@@ -23,8 +13,9 @@ public:
     inline WinCompletion completion() const { return p_.completion(); }
     inline void flush_expr() const { return p_.flush_expr(); }
     inline void flush_win() const { return p_.flush_win(); }
+#ifndef RMACXX_USE_CLASSIC_HANDLES
     inline void block_on_expr(exprid expr) const { p_.block_on_expr(expr); }
-
+#endif
     inline void bexpr_outstanding_gets() const
     { p_.bexpr_outstanding_gets(); }
     inline void bexpr_outstanding_put( const T* buf ) const
@@ -32,8 +23,7 @@ public:
     inline void expr_ignore_last_get() const
     { p_.expr_ignore_last_get(); }
 
-    WrapFill("WindowFill[0]: ",{ return p_.fillInto( buf ); })
-//    int fillInto( T* buf ) const { return p_.fillInto( buf ); }
+    inline int fillInto(T* buf) const{ return p_.fillInto( buf ); }
 private:
     P const& p_;
 };
@@ -51,8 +41,9 @@ public:
     inline WinCompletion completion() const { return v_.completion(); }
     inline void flush_expr() const { return v_.flush_expr(); }
     inline void flush_win() const { return v_.flush_win(); }
+#ifndef RMACXX_USE_CLASSIC_HANDLES
     inline void block_on_expr(exprid expr) const { v_.block_on_expr(expr); }
-
+#endif
     inline void bexpr_outstanding_gets() const
     { v_.bexpr_outstanding_gets(); }
     inline void bexpr_outstanding_put( const T* buf ) const
@@ -60,8 +51,7 @@ public:
     inline void expr_ignore_last_get() const
     { v_.expr_ignore_last_get(); }
 
-    WrapFill("BExpr[0]: ",{ return v_.fillInto( buf ); })
-//    int fillInto( T* buf ) const { return v_.fillInto( buf ); }
+    inline int fillInto(T* buf) const{ return v_.fillInto( buf ); }
 #ifdef RMACXX_USE_CLASSIC_HANDLES
     inline static void flush()
     {
@@ -132,10 +122,7 @@ public:
     inline void operator >>( T* buf )
     {
         // post outstanding gets
-        std::cout<<"rbexpr_outstanding_gets"<<std::endl;
         bexpr_outstanding_gets();
-        std::cout<<"rbexpr_outstanding_gets2 electric boogaloo"<<std::endl;
-
 
         if ( is_win_b() )
             fillInto( buf );
@@ -167,7 +154,11 @@ public:
 
 #endif
 #else
-            EvalBulk(&buf,buf);
+            exprid id = FuturesManager<T>::instance().new_expr(
+                std::async(std::launch::deferred,[buf,*this]{
+                    this->fillInto( buf );
+                }));
+            this->block_on_expr(id);
 #endif
         }
     }
@@ -189,7 +180,7 @@ public:
 #if defined(RMACXX_USE_CLASSIC_HANDLES)
         T* buf = static_cast<T*>( Handles<T>::instance().get_bexpr_ptr( sizeof( T )*win.get_count() ) );
 #else
-        T* buf =FuturesManager<T>::instance().allocate(win.get_count());
+        T* buf = FuturesManager<T>::instance().allocate(win.get_count());
 #endif
 
 #if defined(RMACXX_BEXPR_USE_PLACEMENT_NEW_ALWAYS)
@@ -205,7 +196,10 @@ public:
         // finish evaluation or store current object
         // for later evaluation
         if ( win.is_win_b() )
+        {
             fillInto( buf );
+            win.bexpr_outstanding_put( buf );\
+        }
         else
         {
 #if defined(RMACXX_USE_CLASSIC_HANDLES)
@@ -230,8 +224,12 @@ public:
 
 #endif
 #else
-            //! TODO: Replace handles here
-            EvalBulk(&buf,buf);
+            exprid id = FuturesManager<T>::instance().new_expr(
+                std::async(std::launch::deferred,[buf,*this,win]{ 
+                    this->fillInto( buf ); 
+                    win.bexpr_outstanding_put( buf );
+                }));
+            this->block_on_expr(id);
 #endif
 
         }
@@ -264,8 +262,9 @@ public:
 
 #endif
 #else
-                //! TODO: Replace handles here
-                EvalBulk(&buf,buf);
+                // TODO: CALL THE 
+                // //! TODO: Replace handles here
+                // EvalBulk(&buf,buf);
 #endif
             }
 
@@ -292,8 +291,9 @@ public:
 
 #endif
 #else
-            //! TODO: Replace handles here
-            EvalBulk(&buf, buf);
+                // TODO: CALL THE 
+            // //! TODO: Replace handles here
+            // EvalBulk(&buf, buf);
 #endif
         }
     }
@@ -317,32 +317,21 @@ public:
     }
 
     inline void bexpr_outstanding_gets() const { u_.bexpr_outstanding_gets(); }
+#ifndef RMACXX_USE_CLASSIC_HANDLES
     inline void block_on_expr(exprid expr) const { u_.block_on_expr(expr); }
-
+#endif
     inline int get_count() const { return u_.get_count(); }
     inline bool is_win_b() const { return u_.is_win_b(); }
     inline T* get_expr_bptr() { return u_.get_expr_bptr(); }
 
-//    int fillInto( T* buf ) const
-//    {
-//        int count = u_.fillInto( buf );
-//
-//        for ( int i = 0; i < count; i++ )
-//            buf[i] = operator()( i );
-//
-//        return count;
-//    }
-    WrapFill("WinScalar[0]: ",{
-        std::cout << "ScalarOp: "<< OP::S<<std::endl;
-        std::cout << "Scalar: "<<this->c_<<std::endl;
-
+    inline int fillInto(T* buf) const{
         int count = u_.fillInto( buf );
 
         for ( int i = 0; i < count; i++ )
             buf[i] = operator()( i );
 
         return count;
-    })
+    }
 
 
     // thwart compiler errors
@@ -365,8 +354,9 @@ class BExprWinElemOp
 {
 public:
     explicit BExprWinElemOp( U u, V v ): u_( u ), v_( v ) {}
+#ifndef RMACXX_USE_CLASSIC_HANDLES
     inline void block_on_expr(exprid expr) const { u_.block_on_expr(expr);v_.block_on_expr(expr); }
-
+#endif
     inline void bexpr_outstanding_gets() const
     {
         u_.bexpr_outstanding_gets();
@@ -386,13 +376,7 @@ public:
 
     inline int get_count() const { return u_.get_count(); }
 
-    WrapFill("WinOp[0]: ",{
-        std::cout << "Op: "<< OP::S<<std::endl;
-        return fi(buf);
-    })
-    int fi( T* buf ) const
-
-//    int fillInto( T* buf ) const
+    inline int fillInto(T* buf) const
     {
         T* cache = nullptr;
         const int count = v_.fillInto( buf );

@@ -69,7 +69,6 @@ public:
                 ndims_, MPI_INT, comm_); \
         MPI_Allgather(hi_.data(), ndims_, MPI_INT, rhi_.data(), \
                 ndims_, MPI_INT, comm_); \
-        /*std::cout<<"DONE CHECKING"<<std::endl;*/ \
         if (ndims_ == 1) \
         { \
             /* No need to create cart_comm for 1D */\
@@ -99,8 +98,6 @@ public:
             { \
                 for (int k = 0; k < ( ndims_ - 1 ); k++) \
                 { \
-                    /*std::cout<<"RLO SIZE "<<rlo_.size()<<std::endl;*/ \
-                    /*std::cout<<"RLO INDEX "<<rlo_[0]<<std::endl;*/ \
                     if ( rlo_[(i-1)*ndims_ + k] != rlo_[i*ndims_ + k] ) \
                     { \
                         is_pgrid_unidir_ = false; \
@@ -241,8 +238,6 @@ public:
         GWINIT_COMMON_RANGE( lo, hi );
 
 #ifdef DEBUG_CHECK_GAPS //checks gaps where we want to place, all spaces should be allocated to a process
-        //std::cout<<"WE ARE HERE"<<std::endl;
-
         //rlo_ and rhi_ contain ALL of the coordinates, with their sizes being ndims_*commSize_
         // check_gaps(std::vector<int> wsize, std::vector<std::vector<int>> plos, std::vector<std::vector<int>> phis)
 
@@ -299,27 +294,6 @@ public:
         if (!no_gaps_exist) {
             throw -1;
         }
-        std::cout<<(no_gaps_exist?"THERE ARE NO GAPS AT ALL":"There are gaps at all.")<<std::endl;
-
-        // Print statements to check the values of rlo_ and rhi_
-        /*
-        for (int i = 0; i < ndims_ * commSize_; i++) {
-            std::cout<<"rlo_ at "<<i<<": "<<rlo_[i]<<std::endl;
-        }
-
-        for (int i = 0; i < ndims_ * commSize_; i++) {
-            std::cout<<"rhi_ at "<<i<<": "<<rhi_[i]<<std::endl;
-        }
-        */
-
-        std::cout<<"ENDING HERE"<<std::endl;
-        
-
-        std::cout<<"[ ";
-        for (int i = 0; i < los.size(); i++) {
-            std::cout<<los[0][i]<<" ";
-        }
-        std::cout<<"]"<<std::endl;
 
 
 #endif
@@ -337,23 +311,10 @@ public:
         T* base = nullptr;
         MPI_Win_allocate( nelems_ * sizeof( T ),
                           sizeof( T ), winfo_, comm_, &base, &win_ );
-        //std::cout<<"testing winfo: "<<*winfo_<<std::endl;
-        //std::cout<<"testing comm: "<<*comm_<<std::endl;
-        std::cout<<"testing base: "<<*base<<std::endl;
-        //std::cout<<"testing win: "<<*win_<<std::endl;
         MPI_Win_lock_all( MPI_MODE_NOCHECK, win_ );
         iswinlocked_ = true;
 	    MPI_Barrier( comm_ );
         //by this point, all the processes have submitted their coordinates
-        // std::cout<<"los size: "<<los.size()<<std::endl;
-        // std::cout<<"los"<<std::endl;
-        // for (int i = 0; i < los[0].size(); i++) {
-        //     std::cout<<los[0][i]<<std::endl;
-        // }
-        // std::cout<<"his"<<std::endl;
-        // for (int i = 0; i < his[0].size(); i++) {
-        //     std::cout<<his[0][i]<<std::endl;
-        // }
     }
     
     Window( std::vector<int> const& lo, std::vector<int> const& hi, MPI_Comm comm )
@@ -834,20 +795,7 @@ public:
     // ctor which takes an init_list
     inline WIN& operator()( std::initializer_list<int> const& l,  std::initializer_list<int> const& h, X )
     {
-        /*
-        // run window check here
-        std::vector<int> lv(l.size()), hv(h.size());
-        lv.insert(lv.end(), l.begin(), l.end());
-        hv.insert(hv.end(), h.begin(), h.end());
 
-        for (int i = 0; i < l.size(); i++){
-            if (lv[i] < lo_[i] || hv[i] > hi_[i] ) {
-                // failed check
-                std::cout << "Accessing out of the bounds of the window" << std::endl;
-                abort();
-            }
-        }
-        */
     
 #ifdef DEBUG_CHECK_LIMITS
         store_lo = l;
@@ -1967,8 +1915,12 @@ public:
             GWFLUSH();
         }
     }
-
-    inline void block_on_expr(exprid expr) const { this->expressions_.emplace_back(expr); }
+#ifndef RMACXX_USE_CLASSIC_HANDLES
+    inline void block_on_expr(exprid expr) const {
+        this->expressions_.emplace_back(expr);
+        FuturesManager<T>::instance().block_expr(expr);
+    }
+#endif
     // this is to make it easy to just call flush_all
     // from the expression classes
     inline void flush_win() const

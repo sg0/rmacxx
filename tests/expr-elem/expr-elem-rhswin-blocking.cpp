@@ -27,6 +27,7 @@ int main(int argc, char *argv[])
     2*win(1,{2}) + 3*win(1,{3}) >> win(1,{8});
     win(1,{2}) + 2*win(1,{0}) + 5*win(1,{3}) >> win(1,{9});
 
+    std::cout << "About to flush" << std::endl;
     win.flush(); // NOTE: Local flush still requires a flush to preform computuation
 
     // check results
@@ -35,6 +36,8 @@ int main(int argc, char *argv[])
     win(1,{7}) >> num3;
     win(1,{8}) >> num4;
     win(1,{9}) >> num5;
+
+    win.flush(); // TODO: I think this shou work without this?
 
     if (win.rank() == 0)
     {

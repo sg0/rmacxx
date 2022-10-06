@@ -784,7 +784,6 @@ public:
     void bexpr_outstanding_put( const T* origin_addr ) const
     {
         lock();
-
         if ( watmc_ == ATOMIC_PUT_GET )
         {
             if ( ndims_ == 1 )
@@ -1335,7 +1334,13 @@ public:
             LWFLUSH();
         }
     }
-    inline void block_on_expr(exprid expr) const { this->expressions_.emplace_back(expr); }
+
+#ifndef RMACXX_USE_CLASSIC_HANDLES
+    inline void block_on_expr(exprid expr) const {
+        this->expressions_.emplace_back(expr);
+        FuturesManager<T>::instance().block_expr(expr);
+    }
+#endif
 
     // this is to make it easy to just call flush_all
     // from the expression classes
