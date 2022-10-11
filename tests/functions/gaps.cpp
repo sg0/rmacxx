@@ -7,9 +7,6 @@
 int main(int argc, char *argv[]) {
 
     std::vector<std::vector<int>> los, his;
-
-    //std::vector<int> print_test{1, 2, 4, 2, 2, 1, 23, 43, 4};
-    //rmacxx::print_vector(print_test);
     
     std::vector<int> los1, los2, los3, los4, his1, his2, his3, his4;
 
@@ -30,10 +27,13 @@ int main(int argc, char *argv[]) {
     
     std::vector<int> winsize{10, 10, 10};
 
-    rmacxx::print_vector(los[0]);
+    //rmacxx::print_vector(los[0]);
 
+    bool no_gaps = rmacxx::check_gaps(winsize, los, his);
 
-    std::cout<<"RESULT: "<<rmacxx::check_gaps(winsize, los, his)<<std::endl;
+    //std::cout<<"RESULT: "<<no_gaps<<std::endl;
+
+    assert(no_gaps);
 
     return 0;
 }

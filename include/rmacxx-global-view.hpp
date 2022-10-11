@@ -813,7 +813,7 @@ public:
     inline WIN& operator()( std::initializer_list<int> const& l,  std::initializer_list<int> const& h, X )
     {
         /*
-        // run window check here
+        // run window check here, HERE code for converting initializer_list to vector
         std::vector<int> lv(l.size()), hv(h.size());
         lv.insert(lv.end(), l.begin(), l.end());
         hv.insert(hv.end(), h.begin(), h.end());
