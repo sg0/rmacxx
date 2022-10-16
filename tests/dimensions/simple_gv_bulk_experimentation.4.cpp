@@ -1,5 +1,6 @@
 #include "rmacxx.hpp"
 #include <math.h>
+#include <cassert>
 
 //#define ENDS 0
 

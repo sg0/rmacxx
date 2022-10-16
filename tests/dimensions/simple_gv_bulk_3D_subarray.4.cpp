@@ -99,8 +99,6 @@ int main(int argc, char *argv[])
     );
 
     // put
-    std::cout<<"waddup"<<std::endl;
-
     win({place_offset[0], place_offset[1], place_offset[2]},{
             place_offset[0] + transfer_dims[0] - 1,
             place_offset[1] + transfer_dims[1] - 1,

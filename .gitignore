@@ -1,4 +1,4 @@
 .DS_Store
 .vscode
-tests/**.o
-tests/**.test
+tests/**/*.o
+tests/**/*.test

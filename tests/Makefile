@@ -1,11 +1,11 @@
-SRCS       := $(wildcard ***.cpp)
+SRCS       := $(wildcard */*.cpp)
 PRGS       := $(patsubst %.cpp,%,$(SRCS))
 PRG_SUFFIX  =.test
 OBJ_SUFFIX  =.o
 BINS       := $(patsubst %,%$(PRG_SUFFIX),$(PRGS))
 OBJS       := $(patsubst %,%$(OBJ_SUFFIX),$(PRGS))
 
-CXXFLAGS = -O3 -Wall -std=c++2a -pthread -I../include -D_GNU_SOURCE -DTEST_OVERHEAD
+CXXFLAGS = -O3 -Wall -std=c++20 -pthread -I../include -D_GNU_SOURCE -DTEST_OVERHEAD
 LDFLAGS  =
 MPICXX 	 =  mpic++
 RUNCMD 	 =  mpiexec

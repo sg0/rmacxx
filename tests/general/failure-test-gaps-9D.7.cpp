@@ -1,3 +1,4 @@
+#define DEBUG_CHECK_GAPS
 #include "rmacxx.hpp"
 #include <list>
 #include <cassert>
@@ -15,7 +16,7 @@ int main(int argc, char *argv[])
     if (rank == 0) { // process #0
         lo[0] = 0; lo[1] = 0; lo[2] = 0; lo[3] = 0; lo[4] = 0; lo[5] = 0; lo[6] = 0; lo[7] = 0; lo[8] = 0; //covers the entire floor, 4 tall
         hi[0] = 9; hi[1] = 9; hi[2] = 9; hi[3] = 9; hi[4] = 9; hi[5] = 9; hi[6] = 9; hi[7] = 9; hi[8] = 3;
-    } //left: [0 0 0 0 0 0 0 0 4] [9 9 9 9 9 9 9 9 9]
+    } //left: [0 0 0 0 0 0 0 0 4] [9 9 9 9 9 9 9 9 3]
     else if (rank == 1) { // process #1
         lo[0] = 0; lo[1] = 0; lo[2] = 0; lo[3] = 0; lo[4] = 0; lo[5] = 0; lo[6] = 0; lo[7] = 0; lo[8] = 4; //covers front face, 2 wide
         hi[0] = 9; hi[1] = 9; hi[2] = 9; hi[3] = 9; hi[4] = 9; hi[5] = 9; hi[6] = 1; hi[7] = 9; hi[8] = 9;
