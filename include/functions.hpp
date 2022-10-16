@@ -83,7 +83,7 @@ inline std::tuple<int, std::vector<int>, std::vector<int>> check_overlap(std::ve
 }
 
 
-// Given the size of the window and the lows and highs of the processes, return whether the window has no gaps
+// Given the size of the window and the lows and highs of the processes, returns true if the window has no gaps
 bool check_gaps(std::vector<int> wsize, std::vector<std::vector<int>> plos, std::vector<std::vector<int>> phis) {
     
     //size checks

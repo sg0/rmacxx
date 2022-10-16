@@ -800,7 +800,20 @@ public:
     // ctor which takes an init_list
     inline WIN& operator()( std::initializer_list<int> const& l,  std::initializer_list<int> const& h, X )
     {
+        /*
+        // run window check here, HERE code for converting initializer_list to vector
+        std::vector<int> lv(l.size()), hv(h.size());
+        lv.insert(lv.end(), l.begin(), l.end());
+        hv.insert(hv.end(), h.begin(), h.end());
 
+        for (int i = 0; i < l.size(); i++){
+            if (lv[i] < lo_[i] || hv[i] > hi_[i] ) {
+                // failed check
+                std::cout << "Accessing out of the bounds of the window" << std::endl;
+                abort();
+            }
+        }
+        */
     
 #ifdef DEBUG_CHECK_LIMITS
         store_lo = l;
@@ -1774,18 +1787,19 @@ public:
 
         //std::vector<int> nlo, nhi;
 
-#ifdef RMACXX_SUBARRAY_USE_END_COORDINATES
+#ifdef RMACXX_SUBARRAY_USE_END_COORDINATES  // ---- USING END COORDINATES ----, we want to check limits differently when ends is used vs not
+#ifdef DEBUG_CHECK_LIMITS
         // if we're given inclusive coordinates
         std::vector<int> nhi;
         nhi.insert(nhi.end(), store_hi.begin(), store_hi.end());
-#ifdef DEBUG_CHECK_LIMITS
         if (origin.sizes_ != nhi) {
             //failed check
             std::cout << "Coordinates not equal" << std::endl;
             abort();
         }
 #endif
-#else
+#else                                       // ---- NOT USING END COORDINATES ----
+#ifdef DEBUG_CHECK_LIMITS
         //if we're given size
         std::vector<int> nlo, nhi;
         nlo.insert(nlo.end(), store_lo.begin(), store_lo.end());
@@ -1796,7 +1810,6 @@ public:
         for (int i = 0; i < nlo.size(); i++) {
             sizes[i] = nhi[i] - nlo[i] + 1;
         }
-#ifdef DEBUG_CHECK_LIMITS
         if (origin.sizes_ != sizes) {
             //failed check
             std::cout << "Coordinates not equal" << std::endl;

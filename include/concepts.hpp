@@ -6,67 +6,36 @@
 template <typename T>
 concept always_satisfied = true;
 
-// Check if number is positive (Partially Working) https://stackoverflow.com/questions/69058869/how-to-define-a-concept-for-positive-number
-// template <typename T>
-// concept is_positive = std::is_unsigned_v<T>;
-
-
-
-// template<typename T>
-// constexpr bool get_value() {
-//     return T::value;
-// }
-
-// template <typename T>
-// concept is_positive = requires(get_value<T>()) {
-// };
-
-
-// Check if data type is contiguous (Working)
+// Check if data type is contiguous
 template <typename T>
 concept is_contig = std::contiguous_iterator<typename T::iterator>;
 
-// try feeding the concept a const function
-
-//maybe
+// Integer is positive
 constexpr bool is_pos(int x) {
     return x > 0;
 }
 
+// Ensure two containers are the same size
+template <typename T, typename U>
+constexpr bool same_size(T it1,  U it2) {
+    return it1.size() == it2.size();
+}
+
+// Ensure the coordinates are valid
+//template<class T>
+//constexpr bool check_coords(rmacxx::Window<T, GLOBAL_VIEW> window, rmacxx::RMACXX_Subarray_t<T, GLOBAL_VIEW> subarray) {
+
+//}
 
 
-//template<typename T>
-//    requires (sizeof(T) > 1 && get_value<T>())
 
-
-
-// // Check if lsizes and sizes are equal (Not Working)
-// template <typename T>
-// concept same_size = requires(T ls, T s) {
-//     std::equality_comparable<T>;
-// };
-
-// template <typename T, std::equality_comparable<T> U>
-// bool are_equal(T a, U b) {
-//     //
-// }
-
-// template<class T, class U>
-
-// concept Equa = // exposition only
-//   requires(const std::remove_reference_t<T>& t,
-//            const std::remove_reference_t<U>& u) {
-//     { t == u } -> boolean-testable;
-//     { t != u } -> boolean-testable;
-//     { u == t } -> boolean-testable;
-//     { u != t } -> boolean-testable;
-//   };
 
 // ensure we pass in valid arguments into the << operator
-template<class T, class W, class S>
-concept CheckCoords = requires( W win, S sub /*, std::vector<int> nlo, std::vector<int> nhi, std::vector<int> sizes, int i */) {
-   { win } -> std::same_as<rmacxx::Window<T, GLOBAL_VIEW>>;
-   { sub } -> std::same_as<rmacxx::RMACXX_Subarray_t<T, GLOBAL_VIEW>>;
+// area in window and area in subarray must be same size, subarray end coords must be greater than start
+// template<class T, class W, class S>
+// concept CheckCoords = requires( W win, S sub /*, std::vector<int> nlo, std::vector<int> nhi, std::vector<int> sizes, int i */) {
+//    { win } -> std::same_as<rmacxx::Window<T, GLOBAL_VIEW>>;
+//    { sub } -> std::same_as<rmacxx::RMACXX_Subarray_t<T, GLOBAL_VIEW>>;
 
     /*
     //if we're given size
@@ -92,4 +61,4 @@ concept CheckCoords = requires( W win, S sub /*, std::vector<int> nlo, std::vect
     }
     */
 
-};
+//};
