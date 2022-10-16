@@ -1,4 +1,5 @@
 #include "rmacxx.hpp"
+#define RMACXX_USE_CLASSIC_HANDLES
 
 #include <cassert>
 

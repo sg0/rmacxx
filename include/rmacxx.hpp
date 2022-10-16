@@ -10,7 +10,7 @@
 #include <cstring>
 
 // TODO: Remove feature guard default once development is complete
-// #define RMACXX_USE_CLASSIC_HANDLES
+#define RMACXX_USE_CLASSIC_HANDLES
 
 // #define RMACXX_DEBUG_EXPRS
 
