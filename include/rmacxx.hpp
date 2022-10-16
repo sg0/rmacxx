@@ -12,6 +12,8 @@
 // TODO: Remove feature guard default once development is complete
 // #define RMACXX_USE_CLASSIC_HANDLES
 
+// #define RMACXX_DEBUG_EXPRS
+
 #ifndef RMACXX_USE_CLASSIC_HANDLES
 #include <unordered_map>
 #include <unordered_set>
@@ -238,24 +240,38 @@ public:
         expression_completion_futures_[new_id] = std::move(future);
         return new_id;
     }
+    inline void forget_all(std::vector<exprid> const& expressions){
+        for(auto expr: expressions){
+           expression_liveness_[expr] = false;
+        }
+    }
     inline void remove_expr(exprid id){
         expression_liveness_[id] = false;// Mark that it has been done already
 //        expression_completion_futures_[id].~future();// Delete the future
     }
     inline void block_expr(exprid expr_to_block){
         expression_blocking_count_[expr_to_block]+=1;
+#ifdef RMACXX_DEBUG_EXPRS
+        std::cout<<expression_blocking_count_[expr_to_block]<<" windows are blocking expr " << expr_to_block<<std::endl;
+#endif
     }
     inline void unblock_expr(exprid id){
-        std::cout<<"Unblocking expression (" << id <<"/"<<this->next_id_<<")["<<(expression_liveness_[id]?"Is Alive]":"Is Dead]")<<std::endl;
-        std::cout<<"{n="<<expression_blocking_count_[id]<<"}"<<std::endl;
+#ifdef RMACXX_DEBUG_EXPRS
+        std::cout<<"Unblocking expression " << id <<"("<<expression_blocking_count_[id]<<" currently blocking)["<<(expression_liveness_[id]?"Is Alive]":"Is Dead]")<<std::endl;
+#endif
+        // std::cout<<"{n="<<expression_blocking_count_[id]<<"}"<<std::endl;
         if(expression_liveness_[id]){
             if(expression_blocking_count_[id] > 0){
                 expression_blocking_count_[id] -= 1;
+#ifdef RMACXX_DEBUG_EXPRS
+                std::cout<<"Future "<<id<<" is now waiting on "<< expression_blocking_count_[id]<<" other expressions" <<std::endl;
+#endif
             }
             if(expression_blocking_count_[id] == 0){
-                std::cout<<"Future "<<id<<" is now waiting on: ["<< expression_blocking_count_[id]<<"]" <<std::endl;
                 expression_completion_futures_[id].get(); // Complete operation
-                // std::cout<<"Gotted!"<<std::endl;
+#ifdef RMACXX_DEBUG_EXPRS
+                std::cout<<"Completed expr "<<id<<std::endl;
+#endif
                 this->remove_expr(id);
                 // std::cout<<"Goned!"<<std::endl;
             }

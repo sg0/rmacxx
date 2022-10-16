@@ -147,7 +147,12 @@ public:
 
     // user has to call wfree to deallocate
     // resources
-    ~Window() {}
+    ~Window() {
+        // this->wfree();
+#ifndef RMACXX_USE_CLASSIC_HANDLES
+        FuturesManager<T>::instance().forget_all(expressions_);
+#endif
+    }
 
     void wfree()
     {
@@ -725,25 +730,30 @@ public:
     inline void expr_ignore_last_get() const
     {
         lock();
+        // std::cout<<"Gets gotten(ab)"
+        //         <<expr_info_1D_[expr_issue_counter_-3]<<" "
+        //         <<expr_info_1D_[expr_issue_counter_-3+1]<<" "
+        //         <<expr_info_1D_[expr_issue_counter_-3+2]<<std::endl;
+        // std::cout<<"Size: "<<defer_xfer_nD_.size()<<std::endl;
 
-        if ( ndims_ == 1 )
-        {
+        // if ( ndims_ == 1 )
+        // {
             // counter adjustment
             expr_issue_counter_ -= 3;
             defer_put_xfer_1D_.emplace_back(
                 expr_info_1D_[expr_issue_counter_],
                 expr_info_1D_[expr_issue_counter_+1],
                 expr_info_1D_[expr_issue_counter_+2] );
-        }
-        else
-        {
-            const int idx = defer_xfer_nD_.size()-1;
-            defer_put_xfer_nD_.emplace_back( defer_xfer_nD_[idx].target_,
-                                             defer_xfer_nD_[idx].count_,
-                                             defer_xfer_nD_[idx].subsizes_,
-                                             defer_xfer_nD_[idx].starts_ );
-            defer_xfer_nD_.pop_back();
-        }
+        // }
+        // else
+        // {
+        //     const int idx = defer_xfer_nD_.size()-1;
+        //     defer_put_xfer_nD_.emplace_back( defer_xfer_nD_[idx].target_,
+        //                                      defer_xfer_nD_[idx].count_,
+        //                                      defer_xfer_nD_[idx].subsizes_,
+        //                                      defer_xfer_nD_[idx].starts_ );
+        //     defer_xfer_nD_.pop_back();
+        // }
 
         unlock();
     }
@@ -1027,6 +1037,7 @@ public:
     // any pending deferred gets
     T eval() const
     {
+        // TODO: This only works on numeric types. Custom types would fail to compile
         T val = T( 0 );
         
         lock();
@@ -1167,6 +1178,7 @@ public:
             expr_xfer1D_counter_ += 3;
         } // end of ndims == 1
 
+        std::cout<<"filled_into_win(This should probs only happen once?)"<<std::endl;
         expr_bptr_ = buf;
         
         unlock();
@@ -1174,9 +1186,10 @@ public:
         return count;
     }
 
-    // for bulk expression
-    inline T operator()( int idx ) const { return expr_bptr_[idx]; }
-    inline T& operator()( int idx ) { return expr_bptr_[idx]; }
+    // This is suspected to be the cause of the odd operation bug
+    // // for bulk expression
+    // inline T operator()( int idx ) const { return expr_bptr_[idx]; }
+    // inline T& operator()( int idx ) { return expr_bptr_[idx]; }
 
     // clear all the metadata corresponding
     // to expressions...this is called inside
@@ -1490,7 +1503,6 @@ private:
     // size per window
     mutable Buffer pbuf_;
     mutable T* expr_bptr_;
-
     // locks for protecting multithreaded
     // accesses to window
 #ifdef RMACXX_USE_SPINLOCK

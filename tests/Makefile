@@ -1,4 +1,5 @@
-SRCS       := $(wildcard **/*.cpp)
+SRCS       := $(wildcard */*/*.cpp)
+# SRCS       := $(wildcard */*.cpp */*/*.cpp)
 PRGS       := $(patsubst %.cpp,%,$(SRCS))
 PRG_SUFFIX  =.test
 OBJ_SUFFIX  =.o
@@ -16,6 +17,9 @@ CXX      = $(MPICXX)
 
 build: $(OBJS)
 
+show: 
+	echo "$(OBJS)"
+
 BIN = $@
 
 %$(PRG_SUFFIX): %$(OBJ_SUFFIX)
@@ -28,4 +32,4 @@ BIN = $@
 check: $(OBJS) $(BINS)
 
 clean:
-	$(RM) **/*$(PRG_SUFFIX) **/*$(OBJ_SUFFIX)
+	$(RM) */*$(PRG_SUFFIX) */*/*$(PRG_SUFFIX) */*$(OBJ_SUFFIX) */*/*$(OBJ_SUFFIX)

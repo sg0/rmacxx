@@ -370,7 +370,12 @@ public:
     // user has to call wfree to deallocate
     // resources
     ~Window()
-    {}
+    {
+// this->wfree();
+#ifndef RMACXX_USE_CLASSIC_HANDLES
+        FuturesManager<T>::instance().forget_all(expressions_);
+#endif
+    }
 
     void wfree()
     {
@@ -1667,9 +1672,10 @@ public:
         return total_count;
     }
 
-    // for bulk expression
-    inline T operator()( int idx ) const { return expr_bptr_[idx]; }
-    inline T& operator()( int idx ) { return expr_bptr_[idx]; }
+    // This is suspected to be the cause of the odd operation bug
+    // // for bulk expression
+    // inline T operator()( int idx ) const { return expr_bptr_[idx]; }
+    // inline T& operator()( int idx ) { return expr_bptr_[idx]; }
 
     // clear all the metadata corresponding
     // to expressions...this is called inside

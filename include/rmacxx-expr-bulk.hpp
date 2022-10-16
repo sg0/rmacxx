@@ -8,7 +8,6 @@ public:
     RefBExpr( P const& p ) : p_( p ) {}
 
     inline bool is_win_b() const { return p_.is_win_b(); }
-    inline T operator()( int idx ) const { return p_( idx ); }
     inline int get_count() const { return p_.get_count(); }
     inline WinCompletion completion() const { return p_.completion(); }
     inline void flush_expr() const { return p_.flush_expr(); }
@@ -24,8 +23,14 @@ public:
     { p_.expr_ignore_last_get(); }
 
     inline int fillInto(T* buf) const{ return p_.fillInto( buf ); }
+#ifdef RMACXX_DEBUG_EXPRS
+    inline void debug()const{
+        std::cout<<"@"<<(u_long)&p_;
+    };
+#endif
 private:
     P const& p_;
+
 };
 
 template <typename T, class V>
@@ -36,7 +41,6 @@ public:
     explicit BExpr( V v ) : v_( v ) {}
 
     inline bool is_win_b() const { return v_.is_win_b(); }
-    inline T operator()( int idx ) const { return v_( idx ); }
     inline int get_count() const { return v_.get_count(); }
     inline WinCompletion completion() const { return v_.completion(); }
     inline void flush_expr() const { return v_.flush_expr(); }
@@ -51,6 +55,14 @@ public:
     inline void expr_ignore_last_get() const
     { v_.expr_ignore_last_get(); }
 
+
+#ifdef RMACXX_DEBUG_EXPRS
+    inline void debug()const{
+        std::cout<<"<B>(";
+        v_.debug();
+        std::cout<<")";
+    };
+#endif
     inline int fillInto(T* buf) const{ return v_.fillInto( buf ); }
 #ifdef RMACXX_USE_CLASSIC_HANDLES
     inline static void flush()
@@ -308,13 +320,22 @@ class BExprWinScalarOp
 public:
     explicit BExprWinScalarOp( U u, T c ): u_( u ), c_( c ), c_left_( false ) {}
     explicit BExprWinScalarOp( T c, U u ): u_( u ), c_( c ), c_left_( true ) {}
-
-    inline T operator()( int idx ) const
-    {
-        if ( c_left_ ) return OP::apply( c_, u_( idx ) );
-
-        return OP::apply( u_( idx ), c_ );
-    }
+#ifdef RMACXX_DEBUG_EXPRS
+    inline void debug()const{
+        if (c_left_){
+            std::cout<<"(T";
+            std::cout<<OP::S;
+            u_.debug();
+            std::cout<<")";
+        }else{
+            std::cout<<"(";
+            u_.debug();
+            std::cout<<OP::S;
+            std::cout<<"T)";
+        }
+    };
+#endif
+ 
 
     inline void bexpr_outstanding_gets() const { u_.bexpr_outstanding_gets(); }
 #ifndef RMACXX_USE_CLASSIC_HANDLES
@@ -327,8 +348,13 @@ public:
     inline int fillInto(T* buf) const{
         int count = u_.fillInto( buf );
 
-        for ( int i = 0; i < count; i++ )
-            buf[i] = operator()( i );
+        for ( int i = 0; i < count; i++ ){
+            if ( c_left_ ) {
+                buf[i]= OP::apply( c_, buf[i] );
+            }else{
+                buf[i] =OP::apply( buf[i], c_ );
+            }
+        }
 
         return count;
     }
@@ -363,8 +389,15 @@ public:
         v_.bexpr_outstanding_gets();
     }
 
-    inline T operator()( int idx ) const
-    { return OP::apply( u_( idx ), v_( idx ) ); };
+#ifdef RMACXX_DEBUG_EXPRS
+    inline void debug()const {
+        std::cout<<"(";
+        u_.debug();
+        std::cout<<OP::S;
+        v_.debug();
+        std::cout<<")";
+    };
+#endif
 
     inline bool is_win_b() const
     {
@@ -378,8 +411,7 @@ public:
 
     inline int fillInto(T* buf) const
     {
-        T* cache = nullptr;
-        const int count = v_.fillInto( buf );
+        const int count = u_.fillInto( buf );
 
         // try to use placement_new buf
 #if defined(RMACXX_USE_CLASSIC_HANDLES)
@@ -387,22 +419,24 @@ public:
 #else
         T* mem = FuturesManager<T>::instance().allocate(count);
 #endif
+        T* v_cache;
         if ( mem == nullptr )
-            cache = new T[count];
+            v_cache = new T[count];
         else
-            cache = new ( mem ) T;
+            v_cache = new ( mem ) T;
         
-        // u_'s data is not in preallocated
+        // v_'s data is not in preallocated
         // buffer, hence we need to get it
-        u_.fillInto( cache );
+        v_.fillInto( v_cache );
 
-        for ( int i = 0; i < count; i++ )
-            buf[i] = operator()( i );
+        for ( int i = 0; i < count; i++ ){
+            buf[i]=OP::apply(buf[i], v_cache[i] );
+        }
 
         if ( mem == nullptr )
-            delete []cache;
+            delete []v_cache;
         else
-            cache->~T();
+            v_cache->~T();
 
         return count;
     }

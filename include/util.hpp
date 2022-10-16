@@ -122,10 +122,30 @@ typedef enum
 #endif
 
 // element-wise arithmetic operations
-template <typename T> struct Add { static const char S='+'; static T apply( T l, T r ) { return ( l+r ); } };
-template <typename T> struct Sub { static const char S='-'; static T apply( T l, T r ) { return ( l-r ); } };
-template <typename T> struct Mul { static const char S='*'; static T apply( T l, T r ) { return ( l*r ); } };
-template <typename T> struct Div { static const char S='/'; static T apply( T l, T r ) { return ( l/r ); } };
+template <typename T> struct Add { 
+#ifdef RMACXX_DEBUG_EXPRS
+    static const char S='+';
+#endif
+    static T apply( T l, T r ) { return ( l+r ); }
+};
+template <typename T> struct Sub { 
+#ifdef RMACXX_DEBUG_EXPRS
+    static const char S='-';
+#endif
+    static T apply( T l, T r ) { return ( l-r ); }
+};
+template <typename T> struct Mul { 
+#ifdef RMACXX_DEBUG_EXPRS
+    static const char S='*';
+#endif
+    static T apply( T l, T r ) { return ( l*r ); }
+};
+template <typename T> struct Div { 
+#ifdef RMACXX_DEBUG_EXPRS
+    static const char S='/';
+#endif
+    static T apply( T l, T r ) { return ( l/r ); }
+};
 
 #endif
 

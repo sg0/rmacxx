@@ -9,7 +9,6 @@ class RefEExpr
 public:
     RefEExpr( WIN const& win ) : win_( win ) {}
 
-
    inline T eval() const { return win_.eval(); }
     inline bool is_win_b() const { return win_.is_win_b(); }
     inline WinCompletion completion() const { return win_.completion(); }
@@ -24,6 +23,11 @@ public:
     { win_.eexpr_outstanding_put( val ); }
     inline void expr_ignore_last_get() const
     { win_.expr_ignore_last_get(); }
+#ifdef RMACXX_DEBUG_EXPRS
+    inline void debug()const{
+        std::cout<<"@"<<(u_long)&win_;
+    };
+#endif
 private:
     WIN const& win_;
 };
@@ -114,6 +118,9 @@ public:
     // >> triggers the evaluation
     inline void operator >>( T& d )
     {
+#ifdef RMACXX_DEBUG_EXPRS
+        this->debug();
+#endif
         // post gets
         eexpr_outstanding_gets();
 
@@ -146,8 +153,9 @@ public:
 #endif
 #else
             exprid id = FuturesManager<T>::instance().new_expr(
-                std::async(std::launch::deferred,[&d,*this]{
+                std::async(std::launch::deferred, [&d,*this] () mutable {
                     d = this->eval();
+                    std::cout << "Value of d: " << d << std::endl;
                 }));
             this->block_on_expr(id);
 #endif
@@ -213,8 +221,11 @@ public:
 #endif
 #else
             exprid id = FuturesManager<T>::instance().new_expr(
-                std::async(std::launch::deferred,[c,*this,win]{
+                std::async(std::launch::deferred,[win,*this,c]{
                     *c = this->eval();
+ #ifdef RMACXX_DEBUG_EXPRS
+                    std::cout<< "Evaluated to "<< *c <<std::endl;
+ #endif                   
                     win.eexpr_outstanding_put(*c);
                 }));
             this->block_on_expr(id);
@@ -270,13 +281,20 @@ public:
                 Handles<T>::instance().eexpr_handles_.
                 emplace_back( new ( mem ) EExpr<T,W>( win ), true );
             }
-
 #endif
 #else
             //TODO: Futures for manual flush
 #endif
         }
     }
+
+#ifdef RMACXX_DEBUG_EXPRS
+    inline void debug()const{
+        std::cout<<"<E>(";
+        v_.debug();
+        std::cout<<")";
+    };
+#endif
 private:
     V v_;
 };
@@ -314,6 +332,15 @@ public:
     inline WinCompletion completion() const { return INVALID_FLUSH; };
     inline void flush_win() const {};
     inline void flush_expr() const {}
+#ifdef RMACXX_DEBUG_EXPRS
+    inline void debug()const {
+        std::cout<<"(";
+        a_.debug();
+        std::cout<<OP::S;
+        b_.debug();
+        std::cout<<")";
+    };
+#endif
 private:
     A a_;
     B b_;
@@ -334,7 +361,6 @@ public:
    inline T eval() const
    {
        if ( c_left_ ) return OP::apply( c_, a_.eval() );
-
        return OP::apply( a_.eval(), c_ );
    }
     inline bool is_win_b() const { return a_.is_win_b(); }
@@ -344,6 +370,21 @@ public:
     inline WinCompletion completion() const { return INVALID_FLUSH; };
     inline void flush_win() const {};
     inline void flush_expr() const {}
+#ifdef RMACXX_DEBUG_EXPRS
+    inline void debug()const{
+        if (c_left_){
+            std::cout<<"(T";
+            std::cout<<OP::S;
+            a_.debug();
+            std::cout<<")";
+        }else{
+            std::cout<<"(";
+            a_.debug();
+            std::cout<<OP::S;
+            std::cout<<"T)";
+        }
+    };
+#endif
 private:
     A a_;
     T c_;
