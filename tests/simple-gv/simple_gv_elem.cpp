@@ -42,6 +42,9 @@ int main(int argc, char *argv[])
     win({0}) << 3;
     
     win.flush();
+
+    int num;
+    win({0}) >> num;
     
     win.print("After put...");
 
@@ -50,6 +53,11 @@ int main(int argc, char *argv[])
     win.wfree();
 
     MPI_Finalize();
+
+    if (rank == 0) {
+        assert(num == 3);
+        std::cout<<"Pass"<<std::endl;
+    }
 
     return 0;
 }

@@ -36,11 +36,42 @@ int main(int argc, char *argv[])
 
     win.flush();
 
+    int nums0[10];
+    int nums1[2];
+    int nums2[3];
+    int nums3[8];
+
+    win(0, {1,2},{2,6}) >> nums0;
+    win(1, {4,2},{5,2}) >> nums1;
+    win(2, {2,6},{4,6}) >> nums2;
+    win(3, {0,2},{3,3}) >> nums3;
+
+    win.flush();
+
     win.print("After put...");
 
     win.wfree();
 
 	MPI_Finalize();
+
+    // run a quick assertion test
+    if (win.rank() == 0) {
+        bool all_threes = true;
+        for (int i = 0; i < 10; i++) {
+            all_threes = all_threes && nums0[i] == 3;
+        }
+        for (int i = 0; i < 2; i++) {
+            all_threes = all_threes && nums1[i] == 3;
+        }
+        for (int i = 0; i < 3; i++) {
+            all_threes = all_threes && nums2[i] == 3;
+        }
+        for (int i = 0; i < 8; i++) {
+            all_threes = all_threes && nums3[i] == 3;
+        }
+        assert(all_threes);
+        std::cout<<"Pass"<<std::endl;
+    }
 
 	return 0;
 }

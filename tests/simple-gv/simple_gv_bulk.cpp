@@ -46,6 +46,9 @@ int main(int argc, char *argv[])
     win({4},{8}) << vals.data();
     
     win.flush();
+
+    int nums[5];
+    win({4},{8}) >> nums;
     
     win.print("After put...");
 
@@ -54,6 +57,15 @@ int main(int argc, char *argv[])
     win.wfree();
 
     MPI_Finalize();
+
+    if (rank == 0) {
+        bool all_threes = true;
+        for (int i = 0; i < 5; i++) {
+            all_threes = all_threes && nums[i] == 3;
+        }
+        assert(all_threes);
+        std::cout<<"Pass"<<std::endl;
+    }
 
     return 0;
 }
