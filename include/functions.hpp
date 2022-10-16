@@ -6,7 +6,7 @@
 template<typename T> std::string print_vector(std::vector<T> vec) {
     std::cout<<"[ ";
     for (int i = 0; i < vec.size(); i++) {
-        std::cout<<vec[i]<<" ";
+        std::cout<<(vec[i])<<" ";
     }
     std::cout<<"]"<<std::endl;
     return "";

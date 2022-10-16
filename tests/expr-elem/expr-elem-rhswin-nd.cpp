@@ -6,7 +6,9 @@ int main(int argc, char *argv[])
 
     MPI_Init( &argc, &argv );
 
-    rmacxx::Window<int, LOCAL_VIEW, EXPR, LOCAL_FLUSH> win({10});
+    rmacxx::Window<int, LOCAL_VIEW, EXPR> win({10,10});
+    //rmacxx::Window<int, LOCAL_VIEW, EXPR, LOCAL_FLUSH> win({10});
+    //rmacxx::Window<int, LOCAL_VIEW, EXPR, REMOTE_FLUSH> win({10});
 
     if (win.size() == 1)
     {
@@ -21,23 +23,28 @@ int main(int argc, char *argv[])
     
     int num1, num2, num3, num4, num5;
 
-    win(1,{0}) + 2*win(1,{0}) + 3*win(1,{2}) >> win(0,{5});
-    win(1,{0}) + win(1,{2}) >> win(0,{6});
-    win(1,{1}) + 3*win(1,{4}) >> win(1,{7});
-    2*win(1,{2}) + 3*win(1,{3}) >> win(1,{8});
-    win(1,{2}) + 2*win(1,{0}) + 5*win(1,{3}) >> win(1,{9});
+    win(1,{0,0}) + 2*win(1,{0,0}) + 3*win(1,{2,2})    >> win(0,{5,5});
+    win(1,{0,0}) + win(1,{2,2})                     >> win(0,{6,6});
+    win(1,{1,1}) + 3*win(1,{4,4})                   >> win(1,{7,7});
+    2*win(1,{2,2}) + 3*win(1,{3,3})                 >> win(1,{8,8});
+    win(1,{2,2}) + 2*win(1,{0,0}) + 5*win(1,{3,3})    >> win(1,{9,9});
 
-    std::cout << "About to flush" << std::endl;
-    win.flush(); // NOTE: Local flush still requires a flush to preform computuation
+    win.flush();
 
     // check results
-    win(0,{5}) >> num1;
-    win(0,{6}) >> num2;
-    win(1,{7}) >> num3;
-    win(1,{8}) >> num4;
-    win(1,{9}) >> num5;
+    win(0,{5,5}) >> num1;
+    win(0,{6,6}) >> num2;
+    win(1,{7,7}) >> num3;
+    win(1,{8,8}) >> num4;
+    win(1,{9,9}) >> num5;
+    
+    win.flush();
 
-    win.flush(); // TODO: I think this shou work without this?
+    assert(num1 == 6);
+    assert(num2 == 2);
+    assert(num3 == 4);
+    assert(num4 == 5);
+    assert(num5 == 8);
 
     if (win.rank() == 0)
     {
@@ -49,14 +56,6 @@ int main(int argc, char *argv[])
         std::cout << "win(1,{1}) + 3*win(1,{4}) = " << num3 << std::endl;
         std::cout << "2*win(1,{2}) + 3*win(1,{3}) = " << num4 << std::endl;
         std::cout << "win(1,{2}) + 2*win(1,{0}) + 5*win(1,{3}) = " << num5 << std::endl;
-    }
-
-    assert(num1 == 6);
-    assert(num2 == 2);
-    assert(num3 == 4);
-    assert(num4 == 5);
-    assert(num5 == 8);
-    if (win.rank() == 0){
         std::cout << "Validation PASSED." << std::endl;
     }
 

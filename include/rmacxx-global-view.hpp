@@ -15,6 +15,26 @@ class Window<T, GLOBAL_VIEW, wuse_, wcmpl_, watmc_, wtsft_>
 {
     using WIN = Window <T, GLOBAL_VIEW, wuse_, wcmpl_, watmc_, wtsft_>;
 
+#ifdef RMACXX_USE_CLASSIC_HANDLES
+    #define GWFLUSH() do {\
+        if ( is_expr_elem_ ) EExpr<T, WIN>::flush();\
+        if ( is_expr_bulk_ ) BExpr<T, WIN>::flush();\
+        flush_expr();\
+    } while(0)
+    #define GW_RESERVE_EXPR() {}
+    #define GW_CLEAR_EXPR() {}
+#else
+    //TODO: FIX AND REIMPLEMENT FLUSH
+    #define GWFLUSH() do{ \
+        for(auto expr:expressions_){ \
+            FuturesManager<T>::instance().unblock_expr(expr);\
+        }                 \
+        flush_expr();\
+    } while(0)
+    #define GW_RESERVE_EXPR() expressions_.reserve(DEFAULT_EXPR_COUNT)
+    #define GW_CLEAR_EXPR() expressions_.clear()
+#endif
+
 public:
     // TODO FIXME removed cart_comm ctor for now due to some bugs
     // shall bring it back soon after clean up
@@ -49,7 +69,6 @@ public:
                 ndims_, MPI_INT, comm_); \
         MPI_Allgather(hi_.data(), ndims_, MPI_INT, rhi_.data(), \
                 ndims_, MPI_INT, comm_); \
-        /*std::cout<<"DONE CHECKING"<<std::endl;*/ \
         if (ndims_ == 1) \
         { \
             /* No need to create cart_comm for 1D */\
@@ -79,8 +98,6 @@ public:
             { \
                 for (int k = 0; k < ( ndims_ - 1 ); k++) \
                 { \
-                    /*std::cout<<"RLO SIZE "<<rlo_.size()<<std::endl;*/ \
-                    /*std::cout<<"RLO INDEX "<<rlo_[0]<<std::endl;*/ \
                     if ( rlo_[(i-1)*ndims_ + k] != rlo_[i*ndims_ + k] ) \
                     { \
                         is_pgrid_unidir_ = false; \
@@ -197,6 +214,7 @@ public:
             expr_past_bulk_get_counter_    = 0; \
             expr_bulk_get_counter_         = 0; \
             expr_bulk_put_counter_         = 0; \
+            GW_CLEAR_EXPR();\
         } \
         /* used for subarray construction for ndims > 1 */ \
         if ( ndims_ > 1 ) \
@@ -220,8 +238,6 @@ public:
         GWINIT_COMMON_RANGE( lo, hi );
 
 #ifdef DEBUG_CHECK_GAPS //checks gaps where we want to place, all spaces should be allocated to a process
-        //std::cout<<"WE ARE HERE"<<std::endl;
-
         //rlo_ and rhi_ contain ALL of the coordinates, with their sizes being ndims_*commSize_
         // check_gaps(std::vector<int> wsize, std::vector<std::vector<int>> plos, std::vector<std::vector<int>> phis)
 
@@ -278,27 +294,6 @@ public:
         if (!no_gaps_exist) {
             throw -1;
         }
-        std::cout<<(no_gaps_exist?"THERE ARE NO GAPS AT ALL":"There are gaps at all.")<<std::endl;
-
-        // Print statements to check the values of rlo_ and rhi_
-        /*
-        for (int i = 0; i < ndims_ * commSize_; i++) {
-            std::cout<<"rlo_ at "<<i<<": "<<rlo_[i]<<std::endl;
-        }
-
-        for (int i = 0; i < ndims_ * commSize_; i++) {
-            std::cout<<"rhi_ at "<<i<<": "<<rhi_[i]<<std::endl;
-        }
-        */
-
-        std::cout<<"ENDING HERE"<<std::endl;
-        
-
-        std::cout<<"[ ";
-        for (int i = 0; i < los.size(); i++) {
-            std::cout<<los[0][i]<<" ";
-        }
-        std::cout<<"]"<<std::endl;
 
 
 #endif
@@ -316,23 +311,10 @@ public:
         T* base = nullptr;
         MPI_Win_allocate( nelems_ * sizeof( T ),
                           sizeof( T ), winfo_, comm_, &base, &win_ );
-        //std::cout<<"testing winfo: "<<*winfo_<<std::endl;
-        //std::cout<<"testing comm: "<<*comm_<<std::endl;
-        std::cout<<"testing base: "<<*base<<std::endl;
-        //std::cout<<"testing win: "<<*win_<<std::endl;
         MPI_Win_lock_all( MPI_MODE_NOCHECK, win_ );
         iswinlocked_ = true;
 	    MPI_Barrier( comm_ );
         //by this point, all the processes have submitted their coordinates
-        // std::cout<<"los size: "<<los.size()<<std::endl;
-        // std::cout<<"los"<<std::endl;
-        // for (int i = 0; i < los[0].size(); i++) {
-        //     std::cout<<los[0][i]<<std::endl;
-        // }
-        // std::cout<<"his"<<std::endl;
-        // for (int i = 0; i < his[0].size(); i++) {
-        //     std::cout<<his[0][i]<<std::endl;
-        // }
     }
     
     Window( std::vector<int> const& lo, std::vector<int> const& hi, MPI_Comm comm )
@@ -388,7 +370,12 @@ public:
     // user has to call wfree to deallocate
     // resources
     ~Window()
-    {}
+    {
+// this->wfree();
+#ifndef RMACXX_USE_CLASSIC_HANDLES
+        FuturesManager<T>::instance().forget_all(expressions_);
+#endif
+    }
 
     void wfree()
     {
@@ -423,6 +410,7 @@ public:
             defer_xfer_nD_.clear();
             defer_put_xfer_1D_.clear();
             defer_put_xfer_nD_.clear();
+            GW_CLEAR_EXPR();
         }
 
         expr_bptr_ = nullptr;
@@ -956,7 +944,7 @@ public:
         if ( ndims_ > 1 )
         {
             std::vector<int> new_hi( ndims_ ), new_lo( ndims_ );
-            int total_count = 0;
+//            int total_count = 0;
             new_lo = lo_;
             disp_ = 0;
 
@@ -1697,9 +1685,10 @@ public:
         return total_count;
     }
 
-    // for bulk expression
-    inline T operator()( int idx ) const { return expr_bptr_[idx]; }
-    inline T& operator()( int idx ) { return expr_bptr_[idx]; }
+    // This is suspected to be the cause of the odd operation bug
+    // // for bulk expression
+    // inline T operator()( int idx ) const { return expr_bptr_[idx]; }
+    // inline T& operator()( int idx ) { return expr_bptr_[idx]; }
 
     // clear all the metadata corresponding
     // to expressions...this is called inside
@@ -1710,6 +1699,7 @@ public:
         defer_xfer_nD_.clear();
         defer_put_xfer_nD_.clear();
         defer_put_xfer_1D_.clear();
+        GW_CLEAR_EXPR();
         
         expr_get_counter_               = 0;
         expr_getND_counter_             = 0;
@@ -1941,15 +1931,15 @@ public:
         // have invoked flush in that case anyway
         if ( wcmpl_ == NO_FLUSH || wcmpl_ == LOCAL_FLUSH )
         {
-            // flush is a static member in (B|E)Expr
-            if ( is_expr_elem_ ) EExpr<T, WIN>::flush();
-
-            if ( is_expr_bulk_ ) BExpr<T, WIN>::flush();
-
-            flush_expr();
+            GWFLUSH();
         }
     }
-
+#ifndef RMACXX_USE_CLASSIC_HANDLES
+    inline void block_on_expr(exprid expr) const {
+        this->expressions_.emplace_back(expr);
+        FuturesManager<T>::instance().block_expr(expr);
+    }
+#endif
     // this is to make it easy to just call flush_all
     // from the expression classes
     inline void flush_win() const
@@ -1971,11 +1961,7 @@ public:
     {
         if ( wcmpl_ == NO_FLUSH )
         {
-            if ( is_expr_elem_ ) EExpr<T, WIN>::flush();
-
-            if ( is_expr_bulk_ ) BExpr<T, WIN>::flush();
-
-            flush_expr();
+            GWFLUSH();
         }
     }
 
@@ -2087,6 +2073,9 @@ private:
     T* cas_inp_;
     bool is_fop_, is_cas_, is_comm_dupd_;
 
+#ifndef RMACXX_USE_CLASSIC_HANDLES
+    mutable std::vector<exprid> expressions_;
+#endif
     // parameters for subarray construction
     mutable std::vector<int> subsizes_, starts_;
     mutable std::vector<int> lsizes_, lstarts_;

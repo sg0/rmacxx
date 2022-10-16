@@ -8,21 +8,21 @@ int main(int argc, char *argv[])
     MPI_Init( &argc, &argv );
     MPI_Comm_rank( MPI_COMM_WORLD, &rank );
     
-    std::vector<int> dims(5), pgrid(5);
+    std::vector<int> los(5), his(5);
 
     // create window
     if (rank == 0) // process #0
     { 
-        dims[0] = 0; dims[1] = 0; dims[2] = 0; dims[3] = 0; dims[4] = 0;
-        pgrid[0] = 1; pgrid[1] = 3; pgrid[2] = 3; pgrid[3] = 3; pgrid[4] = 3;
+        los[0] = 0; los[1] = 0; los[2] = 0; los[3] = 0; los[4] = 0;
+        his[0] = 1; his[1] = 3; his[2] = 3; his[3] = 3; his[4] = 3;
     }
     else // process #1
     {
-        dims[0] = 2; dims[1] = 0; dims[2] = 0; dims[3] = 0; dims[4] = 0;
-        pgrid[0] = 3; pgrid[1] = 3; pgrid[2] = 3; pgrid[3] = 3; pgrid[4] = 3;
+        los[0] = 2; los[1] = 0; los[2] = 0; los[3] = 0; los[4] = 0;
+        his[0] = 3; his[1] = 3; his[2] = 3; his[3] = 3; his[4] = 3;
     }
            
-    rmacxx::Window<int,GLOBAL_VIEW> win(dims, pgrid);
+    rmacxx::Window<int,GLOBAL_VIEW> win(los, his);
 
     if (win.size() != 2)
     {

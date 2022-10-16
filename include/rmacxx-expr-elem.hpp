@@ -2,26 +2,34 @@
 // a reference
 // required to wrap the window object
 // to create an EExpr object
-template <typename T, class P>
+
+template <typename T, class WIN>
 class RefEExpr
 {
 public:
-    RefEExpr( P const& p ) : p_( p ) {}
+    RefEExpr( WIN const& win ) : win_( win ) {}
 
-    inline T eval() const { return p_.eval(); }
-    inline bool is_win_b() const { return p_.is_win_b(); }
-    inline WinCompletion completion() const { return p_.completion(); }
-    inline void flush_win() const { p_.flush_win(); }
-    inline void flush_expr() const { p_.flush_expr(); }
-
+   inline T eval() const { return win_.eval(); }
+    inline bool is_win_b() const { return win_.is_win_b(); }
+    inline WinCompletion completion() const { return win_.completion(); }
+    inline void flush_win() const { win_.flush_win(); }
+    inline void flush_expr() const { win_.flush_expr(); }
+#ifndef RMACXX_USE_CLASSIC_HANDLES
+    inline void block_on_expr(exprid expr) const { win_.block_on_expr(expr); }
+#endif
     inline void eexpr_outstanding_gets() const
-    { p_.eexpr_outstanding_gets(); }
+    { win_.eexpr_outstanding_gets(); }
     inline void eexpr_outstanding_put( const T val ) const
-    { p_.eexpr_outstanding_put( val ); }
+    { win_.eexpr_outstanding_put( val ); }
     inline void expr_ignore_last_get() const
-    { p_.expr_ignore_last_get(); }
+    { win_.expr_ignore_last_get(); }
+#ifdef RMACXX_DEBUG_EXPRS
+    inline void debug()const{
+        std::cout<<"@"<<(u_long)&win_;
+    };
+#endif
 private:
-    P const& p_;
+    WIN const& win_;
 };
 
 template <typename T, class V>
@@ -30,19 +38,21 @@ class EExpr : public EExprBase<T>
 public:
     explicit EExpr( V v ) : v_( v ) {}
 
-    inline T eval() const { return v_.eval(); }
+   inline T eval() const { return v_.eval(); }
     inline bool is_win_b() const { return v_.is_win_b(); }
     inline WinCompletion completion() const { return v_.completion(); }
     inline void flush_win() const { v_.flush_win(); }
     inline void flush_expr() const { v_.flush_expr(); }
-
+#ifndef RMACXX_USE_CLASSIC_HANDLES
+    inline void block_on_expr(exprid expr) const { v_.block_on_expr(expr); }
+#endif
     inline void eexpr_outstanding_gets() const
     { v_.eexpr_outstanding_gets(); }
     inline void eexpr_outstanding_put( const T val ) const
     { v_.eexpr_outstanding_put( val ); }
     inline void expr_ignore_last_get() const
     { v_.expr_ignore_last_get(); }
-
+#ifdef RMACXX_USE_CLASSIC_HANDLES
     inline static void flush()
     {
         if ( !Handles<T>::instance().eexpr_handles_.empty() )
@@ -104,17 +114,22 @@ public:
             Handles<T>::instance().eexpr_clear();
         }
     }
-
+#endif
     // >> triggers the evaluation
     inline void operator >>( T& d )
     {
+#ifdef RMACXX_DEBUG_EXPRS
+        this->debug();
+#endif
         // post gets
         eexpr_outstanding_gets();
 
-        if ( is_win_b() )
+        if ( is_win_b() ){
             d = eval();
+        }
         else
         {
+#if defined(RMACXX_USE_CLASSIC_HANDLES)
 #if defined(RMACXX_EEXPR_USE_PLACEMENT_NEW_ALWAYS)
             Handles<T>::instance().eexpr_handles_.
             emplace_back( new ( static_cast<EExpr<T,V>*>( Handles<T>::instance().
@@ -136,6 +151,14 @@ public:
             }
 
 #endif
+#else
+            exprid id = FuturesManager<T>::instance().new_expr(
+                std::async(std::launch::deferred, [&d,*this] () mutable {
+                    d = this->eval();
+                    std::cout << "Value of d: " << d << std::endl;
+                }));
+            this->block_on_expr(id);
+#endif
         }
     }
 
@@ -150,24 +173,32 @@ public:
         // post remaining gets for current
         // object
         eexpr_outstanding_gets();
-        T* c = static_cast<T*>( Handles<T>::instance().get_eexpr_ptr( sizeof( T ) ) );
 
-        // try to use preallocated store for intermediate object
-#if defined(RMACXX_EEXPR_USE_PLACEMENT_NEW_ALWAYS)
-#else
-        if ( c == nullptr )
-        {
-            c = new T;
-            is_placed = false;
-        }
-#endif
+        #if defined(RMACXX_USE_CLASSIC_HANDLES)
+                T* c = static_cast<T*>( Handles<T>::instance().get_eexpr_ptr( sizeof( T ) ) );
+        #else
+                T* c =FuturesManager<T>::instance().allocate(1);
+        #endif
+                // try to use preallocated store for intermediate object
+        #if defined(RMACXX_EEXPR_USE_PLACEMENT_NEW_ALWAYS)
+        #else
+                if ( c == nullptr )
+                {
+                    c = new T;
+                    is_placed = false;
+                }
+        #endif
 
         // finish evaluation or store current object
         // for later evaluation
         if ( win.is_win_b() )
-            *c = eval();
+        {
+            // *c = eval();
+            win.eexpr_outstanding_put(eval());
+        }
         else
         {
+#if defined(RMACXX_USE_CLASSIC_HANDLES)
 #if defined(RMACXX_EEXPR_USE_PLACEMENT_NEW_ALWAYS)
             Handles<T>::instance().eexpr_handles_.
             emplace_back( new ( static_cast<EExpr<T,V>*>( Handles<T>::instance().
@@ -187,6 +218,17 @@ public:
                 emplace_back( new ( mem ) EExpr<T,V>( v_ ), c, true );
             }
 
+#endif
+#else
+            exprid id = FuturesManager<T>::instance().new_expr(
+                std::async(std::launch::deferred,[win,*this,c]{
+                    *c = this->eval();
+ #ifdef RMACXX_DEBUG_EXPRS
+                    std::cout<< "Evaluated to "<< *c <<std::endl;
+ #endif                   
+                    win.eexpr_outstanding_put(*c);
+                }));
+            this->block_on_expr(id);
 #endif
         }
 
@@ -209,14 +251,18 @@ public:
             // if LOCAL_FLUSH
             if ( win.is_win_b() )
             {
+#if defined(RMACXX_USE_CLASSIC_HANDLES)
 #if defined(RMACXX_EEXPR_USE_PLACEMENT_NEW_ALWAYS)
                 Handles<T>::instance().eexpr_handles_.emplace_back( c );
 #else
                 Handles<T>::instance().eexpr_handles_.emplace_back( c, is_placed );
 
 #endif
+#else
+                //TODO: Futures for local flush
+#endif
             }
-
+#if defined(RMACXX_USE_CLASSIC_HANDLES)
 #if defined(RMACXX_EEXPR_USE_PLACEMENT_NEW_ALWAYS)
             Handles<T>::instance().eexpr_handles_.
             emplace_back( new ( static_cast<EExpr<T,W>*>( Handles<T>::instance().
@@ -235,10 +281,20 @@ public:
                 Handles<T>::instance().eexpr_handles_.
                 emplace_back( new ( mem ) EExpr<T,W>( win ), true );
             }
-
+#endif
+#else
+            //TODO: Futures for manual flush
 #endif
         }
     }
+
+#ifdef RMACXX_DEBUG_EXPRS
+    inline void debug()const{
+        std::cout<<"<E>(";
+        v_.debug();
+        std::cout<<")";
+    };
+#endif
 private:
     V v_;
 };
@@ -255,7 +311,13 @@ public:
         b_.eexpr_outstanding_gets();
     }
 
-    inline T eval() const { return OP::apply( a_.eval(), b_.eval() ); }
+#ifndef RMACXX_USE_CLASSIC_HANDLES
+    inline void block_on_expr(exprid expr) const {
+        a_.block_on_expr(expr);
+        b_.block_on_expr(expr);
+    }
+#endif
+   inline T eval() const { return OP::apply( a_.eval(), b_.eval() ); }
 
     inline bool is_win_b() const
     {
@@ -270,6 +332,15 @@ public:
     inline WinCompletion completion() const { return INVALID_FLUSH; };
     inline void flush_win() const {};
     inline void flush_expr() const {}
+#ifdef RMACXX_DEBUG_EXPRS
+    inline void debug()const {
+        std::cout<<"(";
+        a_.debug();
+        std::cout<<OP::S;
+        b_.debug();
+        std::cout<<")";
+    };
+#endif
 private:
     A a_;
     B b_;
@@ -284,14 +355,14 @@ public:
 
     inline void eexpr_outstanding_gets() const
     { a_.eexpr_outstanding_gets(); }
-
-    inline T eval() const
-    {
-        if ( c_left_ ) return OP::apply( c_, a_.eval() );
-
-        return OP::apply( a_.eval(), c_ );
-    }
-
+#ifndef RMACXX_USE_CLASSIC_HANDLES
+    inline void block_on_expr(exprid expr) const { a_.block_on_expr(expr); }
+#endif
+   inline T eval() const
+   {
+       if ( c_left_ ) return OP::apply( c_, a_.eval() );
+       return OP::apply( a_.eval(), c_ );
+   }
     inline bool is_win_b() const { return a_.is_win_b(); }
 
     // thwart compiler errors
@@ -299,6 +370,21 @@ public:
     inline WinCompletion completion() const { return INVALID_FLUSH; };
     inline void flush_win() const {};
     inline void flush_expr() const {}
+#ifdef RMACXX_DEBUG_EXPRS
+    inline void debug()const{
+        if (c_left_){
+            std::cout<<"(T";
+            std::cout<<OP::S;
+            a_.debug();
+            std::cout<<")";
+        }else{
+            std::cout<<"(";
+            a_.debug();
+            std::cout<<OP::S;
+            std::cout<<"T)";
+        }
+    };
+#endif
 private:
     A a_;
     T c_;
@@ -308,7 +394,7 @@ private:
 // operators
 // +
 template <typename T, class A, class B>
-EExpr <T, EExprWinElemOp <T, EExpr<T,A>, EExpr<T,B>, Add<T>>>
+EExpr <T, EExprWinElemOp <T, EExpr<T,A>, EExpr<T,B>, Add<T> > >
 operator+( EExpr<T,A> a, EExpr<T,B> b )
 {
     typedef EExprWinElemOp <T, EExpr<T,A>, EExpr<T,B>, Add<T>> ExprT;
@@ -316,7 +402,7 @@ operator+( EExpr<T,A> a, EExpr<T,B> b )
 }
 // *
 template <typename T, class A, class B>
-EExpr <T, EExprWinElemOp<T, EExpr<T,A>, EExpr<T,B>, Mul<T>>>
+EExpr <T, EExprWinElemOp<T, EExpr<T,A>, EExpr<T,B>, Mul<T> > >
 operator *( EExpr<T,A> a, EExpr<T,B> b )
 {
     typedef EExprWinElemOp <T, EExpr<T,A>, EExpr<T,B>, Mul<T>> ExprT;
@@ -324,7 +410,7 @@ operator *( EExpr<T,A> a, EExpr<T,B> b )
 }
 // -
 template <typename T, class A, class B>
-EExpr <T, EExprWinElemOp<T, EExpr<T,A>, EExpr<T,B>, Sub<T>>>
+EExpr <T, EExprWinElemOp<T, EExpr<T,A>, EExpr<T,B>, Sub<T> > >
 operator -( EExpr<T,A> a, EExpr<T,B> b )
 {
     typedef EExprWinElemOp <T, EExpr<T,A>, EExpr<T,B>, Sub<T>> ExprT;
@@ -332,7 +418,7 @@ operator -( EExpr<T,A> a, EExpr<T,B> b )
 }
 // /
 template <typename T, class A, class B>
-EExpr <T, EExprWinElemOp<T, EExpr<T,A>, EExpr<T,B>, Div<T>>>
+EExpr <T, EExprWinElemOp<T, EExpr<T,A>, EExpr<T,B>, Div<T> > >
 operator /( EExpr<T,A> a, EExpr<T,B> b )
 {
     typedef EExprWinElemOp <T, EExpr<T,A>, EExpr<T,B>, Div<T>> ExprT;
@@ -342,7 +428,7 @@ operator /( EExpr<T,A> a, EExpr<T,B> b )
 // scalar (op) EExpr
 // *
 template <typename T, class A>
-EExpr <T, EExprWinScalarOp<T, EExpr<T,A>, Mul<T>>>
+EExpr <T, EExprWinScalarOp<T, EExpr<T,A>, Mul<T> > >
 operator *( typename id<T>::type d, EExpr<T,A> a )
 {
     typedef EExprWinScalarOp <T, EExpr<T,A>, Mul<T>> ExprT;
@@ -350,7 +436,7 @@ operator *( typename id<T>::type d, EExpr<T,A> a )
 }
 // +
 template <typename T, class A>
-EExpr <T, EExprWinScalarOp<T, EExpr<T,A>, Add<T>>>
+EExpr <T, EExprWinScalarOp<T, EExpr<T,A>, Add<T> > >
 operator +( typename id<T>::type d, EExpr<T,A> a )
 {
     typedef EExprWinScalarOp <T, EExpr<T,A>, Add<T>> ExprT;
@@ -358,7 +444,7 @@ operator +( typename id<T>::type d, EExpr<T,A> a )
 }
 // -
 template <typename T, class A>
-EExpr <T, EExprWinScalarOp<T, EExpr<T,A>, Sub<T>>>
+EExpr <T, EExprWinScalarOp<T, EExpr<T,A>, Sub<T> > >
 operator -( typename id<T>::type d, EExpr<T,A> a )
 {
     typedef EExprWinScalarOp <T, EExpr<T,A>, Sub<T>> ExprT;
@@ -366,7 +452,7 @@ operator -( typename id<T>::type d, EExpr<T,A> a )
 }
 // /
 template <typename T, class A>
-EExpr <T, EExprWinScalarOp<T, EExpr<T,A>, Div<T>>>
+EExpr <T, EExprWinScalarOp<T, EExpr<T,A>, Div<T> > >
 operator /( typename id<T>::type d, EExpr<T,A> a )
 {
     typedef EExprWinScalarOp <T, EExpr<T,A>, Div<T>> ExprT;
@@ -376,7 +462,7 @@ operator /( typename id<T>::type d, EExpr<T,A> a )
 // EExpr (op) scalar
 // *
 template <typename T, class A>
-EExpr <T, EExprWinScalarOp<T, EExpr<T,A>, Mul<T>>>
+EExpr <T, EExprWinScalarOp<T, EExpr<T,A>, Mul<T> > >
 operator *( EExpr<T,A> a, typename id<T>::type d )
 {
     typedef EExprWinScalarOp <T, EExpr<T,A>, Mul<T>> ExprT;
@@ -384,7 +470,7 @@ operator *( EExpr<T,A> a, typename id<T>::type d )
 }
 // +
 template <typename T, class A>
-EExpr <T, EExprWinScalarOp<T, EExpr<T,A>, Add<T>>>
+EExpr <T, EExprWinScalarOp<T, EExpr<T,A>, Add<T> > >
 operator +( EExpr<T,A> a, typename id<T>::type d )
 {
     typedef EExprWinScalarOp <T, EExpr<T,A>, Add<T>> ExprT;
@@ -392,7 +478,7 @@ operator +( EExpr<T,A> a, typename id<T>::type d )
 }
 // -
 template <typename T, class A>
-EExpr <T, EExprWinScalarOp<T, EExpr<T,A>, Sub<T>>>
+EExpr <T, EExprWinScalarOp<T, EExpr<T,A>, Sub<T> > >
 operator -( EExpr<T,A> a, typename id<T>::type d )
 {
     typedef EExprWinScalarOp <T, EExpr<T,A>, Sub<T>> ExprT;
@@ -400,7 +486,7 @@ operator -( EExpr<T,A> a, typename id<T>::type d )
 }
 // /
 template <typename T, class A>
-EExpr <T, EExprWinScalarOp<T, EExpr<T,A>, Div<T>>>
+EExpr <T, EExprWinScalarOp<T, EExpr<T,A>, Div<T> > >
 operator /( EExpr<T,A> a, typename id<T>::type d )
 {
     typedef EExprWinScalarOp <T, EExpr<T,A>, Div<T>> ExprT;

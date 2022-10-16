@@ -9,6 +9,17 @@
 #include <string>
 #include <cstring>
 
+// TODO: Remove feature guard default once development is complete
+#define RMACXX_USE_CLASSIC_HANDLES
+
+// #define RMACXX_DEBUG_EXPRS
+
+#ifndef RMACXX_USE_CLASSIC_HANDLES
+#include <unordered_map>
+#include <unordered_set>
+#include <future>
+#endif
+
 #ifdef RMACXX_USE_SPINLOCK
 #include <atomic>
 std::atomic_flag locked = ATOMIC_FLAG_INIT;
@@ -43,27 +54,11 @@ struct Y {};
 // for expressions
 template <typename T> struct id { typedef T type; };
 
+using exprid = unsigned int;
 
-// base class for element-wise and bulk expressions
-// https://stackoverflow.com/questions/300986/when-should-you-not-use-virtual-destructors
-template <typename T> class EExprBase
-{
-public:
-    virtual T eval() const = 0;
-    virtual void eexpr_outstanding_put( const T val ) const = 0;
-
-    //virtual ~EExprBase() {}
-};
-
-template <typename T> class BExprBase
-{
-public:
-    virtual int fillInto( T* buf ) const = 0;
-    virtual void bexpr_outstanding_put( const T* buf ) const = 0;
-
-    //virtual ~BExprBase() {}
-};
-
+#if defined(RMACXX_USE_CLASSIC_HANDLES)
+template <typename T> class EExprBase;
+template <typename T> class BExprBase;
 template <typename T> struct EExprHandle
 {
     EExprBase<T>* that_;
@@ -228,6 +223,92 @@ private:
         eexpr_buf_( static_cast<char*>( malloc( DEFAULT_EEXPR_SIZE ) ) ),
         bexpr_buf_( static_cast<char*>( malloc( DEFAULT_BEXPR_SIZE ) ) )
     {}
+};
+#else
+template <typename T> class ExprBase;
+template <typename T> class FuturesManager {
+public:
+    static FuturesManager& instance()
+    {
+        static FuturesManager s_instance;
+        return s_instance;
+    }
+    inline exprid new_expr(std::future<void> future){
+        exprid new_id = this->next_id_++;
+        // std::cout<<"Creating expression '" << new_id<<"'"<<std::endl;
+        expression_liveness_[new_id] = true;
+        expression_completion_futures_[new_id] = std::move(future);
+        return new_id;
+    }
+    inline void forget_all(std::vector<exprid> const& expressions){
+        for(auto expr: expressions){
+           expression_liveness_[expr] = false;
+        }
+    }
+    inline void remove_expr(exprid id){
+        expression_liveness_[id] = false;// Mark that it has been done already
+//        expression_completion_futures_[id].~future();// Delete the future
+    }
+    inline void block_expr(exprid expr_to_block){
+        expression_blocking_count_[expr_to_block]+=1;
+#ifdef RMACXX_DEBUG_EXPRS
+        std::cout<<expression_blocking_count_[expr_to_block]<<" windows are blocking expr " << expr_to_block<<std::endl;
+#endif
+    }
+    inline void unblock_expr(exprid id){
+#ifdef RMACXX_DEBUG_EXPRS
+        std::cout<<"Unblocking expression " << id <<"("<<expression_blocking_count_[id]<<" currently blocking)["<<(expression_liveness_[id]?"Is Alive]":"Is Dead]")<<std::endl;
+#endif
+        // std::cout<<"{n="<<expression_blocking_count_[id]<<"}"<<std::endl;
+        if(expression_liveness_[id]){
+            if(expression_blocking_count_[id] > 0){
+                expression_blocking_count_[id] -= 1;
+#ifdef RMACXX_DEBUG_EXPRS
+                std::cout<<"Future "<<id<<" is now waiting on "<< expression_blocking_count_[id]<<" other expressions" <<std::endl;
+#endif
+            }
+            if(expression_blocking_count_[id] == 0){
+                expression_completion_futures_[id].get(); // Complete operation
+#ifdef RMACXX_DEBUG_EXPRS
+                std::cout<<"Completed expr "<<id<<std::endl;
+#endif
+                this->remove_expr(id);
+                // std::cout<<"Goned!"<<std::endl;
+            }
+        }
+    }
+    inline T* allocate(std::size_t size) {
+        auto data_ptr_offset = this->next_data_index_;
+        this->next_data_index_+= size;
+        return &this->data_buffer_[data_ptr_offset];
+    }
+private:
+    // Expression bump allocator
+    int expression_blocking_count_[DEFAULT_EXPR_COUNT];
+    bool expression_liveness_[DEFAULT_EXPR_COUNT];
+    std::future<void> expression_completion_futures_[DEFAULT_EXPR_COUNT];
+    exprid next_id_ = 0;
+
+    // Data bump allocator
+    T data_buffer_[DEFAULT_BEXPR_SIZE+DEFAULT_EEXPR_SIZE];
+    unsigned int next_data_index_ = 0;
+};
+#endif
+// base class for element-wise and bulk expressions
+// https://stackoverflow.com/questions/300986/when-should-you-not-use-virtual-destructors
+
+template <typename T> class EExprBase
+{
+public:
+    virtual T eval() const = 0;
+    virtual void eexpr_outstanding_put( const T val ) const = 0;
+};
+
+template <typename T> class BExprBase
+{
+public:
+    virtual int fillInto( T* buf ) const = 0;
+    virtual void bexpr_outstanding_put( const T* buf ) const = 0;
 };
 
 // class base templates

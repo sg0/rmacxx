@@ -13,6 +13,26 @@ class Window<T, LOCAL_VIEW, wuse_, wcmpl_, watmc_, wtsft_>
 {
     using WIN = Window <T, LOCAL_VIEW, wuse_, wcmpl_, watmc_, wtsft_>;
 
+#ifdef RMACXX_USE_CLASSIC_HANDLES
+    #define LWFLUSH() do {\
+        if ( is_expr_elem_ ) EExpr<T, WIN>::flush();\
+        if ( is_expr_bulk_ ) BExpr<T, WIN>::flush();\
+        flush_expr();\
+    } while(0)
+    #define LW_RESERVE_EXPR() {}
+    #define LW_CLEAR_EXPR() {}
+#else
+    //TODO: FIX AND REIMPLEMENT FLUSH
+    #define LWFLUSH() do{ \
+        for(auto expr:expressions_){ \
+            FuturesManager<T>::instance().unblock_expr(expr);\
+        }                 \
+        flush_expr();\
+    } while(0)
+    #define LW_RESERVE_EXPR() expressions_.reserve(DEFAULT_EXPR_COUNT)
+    #define LW_CLEAR_EXPR() expressions_.clear()
+#endif
+
     // TODO allow creation of empty windows, and define
     // methods to populate it later
 public:
@@ -52,11 +72,13 @@ public:
             expr_info_1D_ = new int[expr_past_info_1D_size_]; \
             defer_put_xfer_1D_.reserve(DEFAULT_EXPR_COUNT); \
             defer_put_xfer_nD_.reserve(DEFAULT_EXPR_COUNT); \
+            LW_RESERVE_EXPR();\
         } \
         /* used for subarray construction for ndims > 1 */\
         subsizes_.resize(ndims_); \
         starts_.resize(ndims_); \
     } while(0)
+
 
     /* Win_allocate model */
     Window( std::vector<int> const& dims )
@@ -125,7 +147,12 @@ public:
 
     // user has to call wfree to deallocate
     // resources
-    ~Window() {}
+    ~Window() {
+        // this->wfree();
+#ifndef RMACXX_USE_CLASSIC_HANDLES
+        FuturesManager<T>::instance().forget_all(expressions_);
+#endif
+    }
 
     void wfree()
     {
@@ -151,6 +178,7 @@ public:
             defer_xfer_nD_.clear();
             defer_put_xfer_1D_.clear();
             defer_put_xfer_nD_.clear();
+            LW_CLEAR_EXPR();
         }
 
         expr_bptr_ = nullptr;
@@ -702,25 +730,30 @@ public:
     inline void expr_ignore_last_get() const
     {
         lock();
+        // std::cout<<"Gets gotten(ab)"
+        //         <<expr_info_1D_[expr_issue_counter_-3]<<" "
+        //         <<expr_info_1D_[expr_issue_counter_-3+1]<<" "
+        //         <<expr_info_1D_[expr_issue_counter_-3+2]<<std::endl;
+        // std::cout<<"Size: "<<defer_xfer_nD_.size()<<std::endl;
 
-        if ( ndims_ == 1 )
-        {
+        // if ( ndims_ == 1 )
+        // {
             // counter adjustment
             expr_issue_counter_ -= 3;
             defer_put_xfer_1D_.emplace_back(
                 expr_info_1D_[expr_issue_counter_],
                 expr_info_1D_[expr_issue_counter_+1],
                 expr_info_1D_[expr_issue_counter_+2] );
-        }
-        else
-        {
-            const int idx = defer_xfer_nD_.size()-1;
-            defer_put_xfer_nD_.emplace_back( defer_xfer_nD_[idx].target_,
-                                             defer_xfer_nD_[idx].count_,
-                                             defer_xfer_nD_[idx].subsizes_,
-                                             defer_xfer_nD_[idx].starts_ );
-            defer_xfer_nD_.pop_back();
-        }
+        // }
+        // else
+        // {
+        //     const int idx = defer_xfer_nD_.size()-1;
+        //     defer_put_xfer_nD_.emplace_back( defer_xfer_nD_[idx].target_,
+        //                                      defer_xfer_nD_[idx].count_,
+        //                                      defer_xfer_nD_[idx].subsizes_,
+        //                                      defer_xfer_nD_[idx].starts_ );
+        //     defer_xfer_nD_.pop_back();
+        // }
 
         unlock();
     }
@@ -761,7 +794,6 @@ public:
     void bexpr_outstanding_put( const T* origin_addr ) const
     {
         lock();
-
         if ( watmc_ == ATOMIC_PUT_GET )
         {
             if ( ndims_ == 1 )
@@ -1005,12 +1037,12 @@ public:
     // any pending deferred gets
     T eval() const
     {
+        // TODO: This only works on numeric types. Custom types would fail to compile
         T val = T( 0 );
         
         lock();
         
         int& target = expr_info_1D_[expr_xfer1D_counter_];
-
         if ( expr_size_counter_ < PREALLOC_BUF_SZ )
         {
             flush_local( target );
@@ -1146,6 +1178,7 @@ public:
             expr_xfer1D_counter_ += 3;
         } // end of ndims == 1
 
+        std::cout<<"filled_into_win(This should probs only happen once?)"<<std::endl;
         expr_bptr_ = buf;
         
         unlock();
@@ -1153,9 +1186,10 @@ public:
         return count;
     }
 
-    // for bulk expression
-    inline T operator()( int idx ) const { return expr_bptr_[idx]; }
-    inline T& operator()( int idx ) { return expr_bptr_[idx]; }
+    // This is suspected to be the cause of the odd operation bug
+    // // for bulk expression
+    // inline T operator()( int idx ) const { return expr_bptr_[idx]; }
+    // inline T& operator()( int idx ) { return expr_bptr_[idx]; }
 
     // clear all the metadata corresponding
     // to expressions...this is called inside
@@ -1166,6 +1200,7 @@ public:
         defer_xfer_nD_.clear();
         defer_put_xfer_nD_.clear();
         defer_put_xfer_1D_.clear();
+        LW_CLEAR_EXPR();
         expr_get_counter_       = 0;
         expr_getND_counter_     = 0;
         expr_xfer1D_counter_    = 0;
@@ -1309,14 +1344,16 @@ public:
         // have invoked flush in that case anyway
         if ( wcmpl_ == NO_FLUSH || wcmpl_ == LOCAL_FLUSH )
         {
-            // flush is a static member in (B|E)Expr
-            if ( is_expr_elem_ ) EExpr<T, WIN>::flush();
-
-            if ( is_expr_bulk_ ) BExpr<T, WIN>::flush();
-
-            flush_expr();
+            LWFLUSH();
         }
     }
+
+#ifndef RMACXX_USE_CLASSIC_HANDLES
+    inline void block_on_expr(exprid expr) const {
+        this->expressions_.emplace_back(expr);
+        FuturesManager<T>::instance().block_expr(expr);
+    }
+#endif
 
     // this is to make it easy to just call flush_all
     // from the expression classes
@@ -1339,11 +1376,7 @@ public:
     {
         if ( wcmpl_ == NO_FLUSH )
         {
-            if ( is_expr_elem_ ) EExpr<T, WIN>::flush();
-
-            if ( is_expr_bulk_ ) BExpr<T, WIN>::flush();
-
-            flush_expr();
+            LWFLUSH();
         }
     }
 
@@ -1434,6 +1467,9 @@ private:
     T* cas_inp_;
     bool is_fop_, is_cas_;
 
+#ifndef RMACXX_USE_CLASSIC_HANDLES
+    mutable std::vector<exprid> expressions_;
+#endif
     mutable std::vector<int> subsizes_;
     mutable std::vector<int> starts_;
     mutable int count_dimn_;
@@ -1467,7 +1503,6 @@ private:
     // size per window
     mutable Buffer pbuf_;
     mutable T* expr_bptr_;
-
     // locks for protecting multithreaded
     // accesses to window
 #ifdef RMACXX_USE_SPINLOCK

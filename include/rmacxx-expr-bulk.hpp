@@ -1,5 +1,6 @@
 // expression class that takes
 // a reference (to a window)
+
 template <typename T, class P>
 class RefBExpr
 {
@@ -7,12 +8,13 @@ public:
     RefBExpr( P const& p ) : p_( p ) {}
 
     inline bool is_win_b() const { return p_.is_win_b(); }
-    inline T operator()( int idx ) const { return p_( idx ); }
     inline int get_count() const { return p_.get_count(); }
     inline WinCompletion completion() const { return p_.completion(); }
     inline void flush_expr() const { return p_.flush_expr(); }
     inline void flush_win() const { return p_.flush_win(); }
-
+#ifndef RMACXX_USE_CLASSIC_HANDLES
+    inline void block_on_expr(exprid expr) const { p_.block_on_expr(expr); }
+#endif
     inline void bexpr_outstanding_gets() const
     { p_.bexpr_outstanding_gets(); }
     inline void bexpr_outstanding_put( const T* buf ) const
@@ -20,9 +22,15 @@ public:
     inline void expr_ignore_last_get() const
     { p_.expr_ignore_last_get(); }
 
-    int fillInto( T* buf ) const { return p_.fillInto( buf ); }
+    inline int fillInto(T* buf) const{ return p_.fillInto( buf ); }
+#ifdef RMACXX_DEBUG_EXPRS
+    inline void debug()const{
+        std::cout<<"@"<<(u_long)&p_;
+    };
+#endif
 private:
     P const& p_;
+
 };
 
 template <typename T, class V>
@@ -33,12 +41,13 @@ public:
     explicit BExpr( V v ) : v_( v ) {}
 
     inline bool is_win_b() const { return v_.is_win_b(); }
-    inline T operator()( int idx ) const { return v_( idx ); }
     inline int get_count() const { return v_.get_count(); }
     inline WinCompletion completion() const { return v_.completion(); }
     inline void flush_expr() const { return v_.flush_expr(); }
     inline void flush_win() const { return v_.flush_win(); }
-
+#ifndef RMACXX_USE_CLASSIC_HANDLES
+    inline void block_on_expr(exprid expr) const { v_.block_on_expr(expr); }
+#endif
     inline void bexpr_outstanding_gets() const
     { v_.bexpr_outstanding_gets(); }
     inline void bexpr_outstanding_put( const T* buf ) const
@@ -46,8 +55,16 @@ public:
     inline void expr_ignore_last_get() const
     { v_.expr_ignore_last_get(); }
 
-    int fillInto( T* buf ) const { return v_.fillInto( buf ); }
 
+#ifdef RMACXX_DEBUG_EXPRS
+    inline void debug()const{
+        std::cout<<"<B>(";
+        v_.debug();
+        std::cout<<")";
+    };
+#endif
+    inline int fillInto(T* buf) const{ return v_.fillInto( buf ); }
+#ifdef RMACXX_USE_CLASSIC_HANDLES
     inline static void flush()
     {
         if ( !Handles<T>::instance().bexpr_handles_.empty() )
@@ -112,15 +129,12 @@ public:
             Handles<T>::instance().bexpr_clear();
         }
     }
-
+#endif
     // user managed buffer in the RHS
     inline void operator >>( T* buf )
     {
         // post outstanding gets
-        std::cout<<"rbexpr_outstanding_gets"<<std::endl;
         bexpr_outstanding_gets();
-        std::cout<<"rbexpr_outstanding_gets2 electric boogaloo"<<std::endl;
-
 
         if ( is_win_b() )
             fillInto( buf );
@@ -130,7 +144,7 @@ public:
             // object, and will go out of scope if not stored
 
             // try to use preallocated store for intermediate object
-
+#if defined(RMACXX_USE_CLASSIC_HANDLES)
 #if defined(RMACXX_BEXPR_USE_PLACEMENT_NEW_ALWAYS)
             Handles<T>::instance().bexpr_handles_.
             emplace_back( new ( static_cast<BExpr<T,V>*>( Handles<T>::instance().
@@ -150,6 +164,13 @@ public:
                 emplace_back( new ( mem ) BExpr<T,V>( v_ ), buf, true );
             }
 
+#endif
+#else
+            exprid id = FuturesManager<T>::instance().new_expr(
+                std::async(std::launch::deferred,[buf,*this]{
+                    this->fillInto( buf );
+                }));
+            this->block_on_expr(id);
 #endif
         }
     }
@@ -168,7 +189,11 @@ public:
         
         // buffer for storing results of expression
         // and origin buffer for put
+#if defined(RMACXX_USE_CLASSIC_HANDLES)
         T* buf = static_cast<T*>( Handles<T>::instance().get_bexpr_ptr( sizeof( T )*win.get_count() ) );
+#else
+        T* buf = FuturesManager<T>::instance().allocate(win.get_count());
+#endif
 
 #if defined(RMACXX_BEXPR_USE_PLACEMENT_NEW_ALWAYS)
 #else
@@ -183,9 +208,13 @@ public:
         // finish evaluation or store current object
         // for later evaluation
         if ( win.is_win_b() )
+        {
             fillInto( buf );
+            win.bexpr_outstanding_put( buf );\
+        }
         else
         {
+#if defined(RMACXX_USE_CLASSIC_HANDLES)
 #if defined(RMACXX_BEXPR_USE_PLACEMENT_NEW_ALWAYS)
             Handles<T>::instance().bexpr_handles_.
             emplace_back( new ( static_cast<BExpr<T,V>*>( Handles<T>::instance().
@@ -206,6 +235,15 @@ public:
             }
 
 #endif
+#else
+            exprid id = FuturesManager<T>::instance().new_expr(
+                std::async(std::launch::deferred,[buf,*this,win]{ 
+                    this->fillInto( buf ); 
+                    win.bexpr_outstanding_put( buf );
+                }));
+            this->block_on_expr(id);
+#endif
+
         }
 
         // issue put, user will need to call flush
@@ -227,14 +265,22 @@ public:
             // stage expression intermediate result
             if ( win.is_win_b() )
             {
+
+#if defined(RMACXX_USE_CLASSIC_HANDLES)
 #if defined(RMACXX_BEXPR_USE_PLACEMENT_NEW_ALWAYS)
                 Handles<T>::instance().bexpr_handles_.emplace_back( buf );
 #else
                 Handles<T>::instance().eexpr_handles_.emplace_back( buf, is_placed );
 
 #endif
+#else
+                // TODO: CALL THE 
+                // //! TODO: Replace handles here
+                // EvalBulk(&buf,buf);
+#endif
             }
 
+#if defined(RMACXX_USE_CLASSIC_HANDLES)
 #if defined(RMACXX_BEXPR_USE_PLACEMENT_NEW_ALWAYS)
             Handles<T>::instance().bexpr_handles_.
             emplace_back( new ( static_cast<BExpr<T,W>*>( Handles<T>::instance().
@@ -256,6 +302,11 @@ public:
             }
 
 #endif
+#else
+                // TODO: CALL THE 
+            // //! TODO: Replace handles here
+            // EvalBulk(&buf, buf);
+#endif
         }
     }
 private:
@@ -269,29 +320,45 @@ class BExprWinScalarOp
 public:
     explicit BExprWinScalarOp( U u, T c ): u_( u ), c_( c ), c_left_( false ) {}
     explicit BExprWinScalarOp( T c, U u ): u_( u ), c_( c ), c_left_( true ) {}
-
-    inline T operator()( int idx ) const
-    {
-        if ( c_left_ ) return OP::apply( c_, u_( idx ) );
-
-        return OP::apply( u_( idx ), c_ );
-    }
+#ifdef RMACXX_DEBUG_EXPRS
+    inline void debug()const{
+        if (c_left_){
+            std::cout<<"(T";
+            std::cout<<OP::S;
+            u_.debug();
+            std::cout<<")";
+        }else{
+            std::cout<<"(";
+            u_.debug();
+            std::cout<<OP::S;
+            std::cout<<"T)";
+        }
+    };
+#endif
+ 
 
     inline void bexpr_outstanding_gets() const { u_.bexpr_outstanding_gets(); }
-
+#ifndef RMACXX_USE_CLASSIC_HANDLES
+    inline void block_on_expr(exprid expr) const { u_.block_on_expr(expr); }
+#endif
     inline int get_count() const { return u_.get_count(); }
     inline bool is_win_b() const { return u_.is_win_b(); }
     inline T* get_expr_bptr() { return u_.get_expr_bptr(); }
 
-    int fillInto( T* buf ) const
-    {
+    inline int fillInto(T* buf) const{
         int count = u_.fillInto( buf );
 
-        for ( int i = 0; i < count; i++ )
-            buf[i] = operator()( i );
+        for ( int i = 0; i < count; i++ ){
+            if ( c_left_ ) {
+                buf[i]= OP::apply( c_, buf[i] );
+            }else{
+                buf[i] =OP::apply( buf[i], c_ );
+            }
+        }
 
         return count;
     }
+
 
     // thwart compiler errors
     void bexpr_outstanding_put( const T* buf ) const {}
@@ -305,21 +372,32 @@ private:
     bool c_left_;
 };
 
+class instance;
+
 // window element-wise operations
 template <typename T, class U, class V, class OP>
 class BExprWinElemOp
 {
 public:
     explicit BExprWinElemOp( U u, V v ): u_( u ), v_( v ) {}
-
+#ifndef RMACXX_USE_CLASSIC_HANDLES
+    inline void block_on_expr(exprid expr) const { u_.block_on_expr(expr);v_.block_on_expr(expr); }
+#endif
     inline void bexpr_outstanding_gets() const
     {
         u_.bexpr_outstanding_gets();
         v_.bexpr_outstanding_gets();
     }
 
-    inline T operator()( int idx ) const
-    { return OP::apply( u_( idx ), v_( idx ) ); };
+#ifdef RMACXX_DEBUG_EXPRS
+    inline void debug()const {
+        std::cout<<"(";
+        u_.debug();
+        std::cout<<OP::S;
+        v_.debug();
+        std::cout<<")";
+    };
+#endif
 
     inline bool is_win_b() const
     {
@@ -330,31 +408,35 @@ public:
     }
 
     inline int get_count() const { return u_.get_count(); }
-    
-    int fillInto( T* buf ) const
+
+    inline int fillInto(T* buf) const
     {
-        T* cache = nullptr;
-        const int count = v_.fillInto( buf );
+        const int count = u_.fillInto( buf );
 
         // try to use placement_new buf
+#if defined(RMACXX_USE_CLASSIC_HANDLES)
         T* mem = static_cast<T*>( Handles<T>::instance().get_bexpr_ptr( sizeof( T )*count ) );
-
+#else
+        T* mem = FuturesManager<T>::instance().allocate(count);
+#endif
+        T* v_cache;
         if ( mem == nullptr )
-            cache = new T[count];
+            v_cache = new T[count];
         else
-            cache = new ( mem ) T;
+            v_cache = new ( mem ) T;
         
-        // u_'s data is not in preallocated
+        // v_'s data is not in preallocated
         // buffer, hence we need to get it
-        u_.fillInto( cache );
+        v_.fillInto( v_cache );
 
-        for ( int i = 0; i < count; i++ )
-            buf[i] = operator()( i );
+        for ( int i = 0; i < count; i++ ){
+            buf[i]=OP::apply(buf[i], v_cache[i] );
+        }
 
         if ( mem == nullptr )
-            delete []cache;
+            delete []v_cache;
         else
-            cache->~T();
+            v_cache->~T();
 
         return count;
     }
@@ -372,7 +454,7 @@ private:
 
 // s/A
 template <typename T, class U>
-BExpr <T, BExprWinScalarOp<T, BExpr<T,U>, Div<T>>>
+BExpr <T, BExprWinScalarOp<T, BExpr<T,U>, Div<T> > >
 operator/( typename id<T>::type c, BExpr<T,U> u )
 {
     typedef BExprWinScalarOp <T, BExpr<T,U>, Div<T>> DivT;
@@ -381,7 +463,7 @@ operator/( typename id<T>::type c, BExpr<T,U> u )
 
 // A/s
 template <typename T, class U>
-BExpr <T, BExprWinScalarOp<T,BExpr<T,U>, Div<T>>>
+BExpr <T, BExprWinScalarOp<T,BExpr<T,U>, Div<T> > >
 operator/( BExpr<T,U> u, typename id<T>::type c )
 {
     typedef BExprWinScalarOp <T, BExpr<T,U>, Div<T>> DivT;
@@ -390,7 +472,7 @@ operator/( BExpr<T,U> u, typename id<T>::type c )
 
 // s+A
 template <typename T, class U>
-BExpr <T, BExprWinScalarOp<T, BExpr<T,U>, Add<T>>>
+BExpr <T, BExprWinScalarOp<T, BExpr<T,U>, Add<T> > >
 operator +( typename id<T>::type c, BExpr<T,U> u )
 {
     typedef BExprWinScalarOp <T, BExpr<T,U>, Add<T>> SumT;
@@ -398,7 +480,7 @@ operator +( typename id<T>::type c, BExpr<T,U> u )
 }
 // A+s
 template <typename T, class U>
-BExpr <T, BExprWinScalarOp<T,BExpr<T,U>, Add<T>>>
+BExpr <T, BExprWinScalarOp<T,BExpr<T,U>, Add<T> > >
 operator+( BExpr<T,U> u, typename id<T>::type c )
 {
     typedef BExprWinScalarOp <T, BExpr<T,U>, Add<T>> SumT;
@@ -406,7 +488,7 @@ operator+( BExpr<T,U> u, typename id<T>::type c )
 }
 // s*A
 template <typename T, class U>
-BExpr <T, BExprWinScalarOp<T, BExpr<T,U>, Mul<T>>>
+BExpr <T, BExprWinScalarOp<T, BExpr<T,U>, Mul<T> > >
 operator*( typename id<T>::type c, BExpr<T,U> u )
 {
     typedef BExprWinScalarOp <T, BExpr<T,U>, Mul<T>> MulT;
@@ -415,7 +497,7 @@ operator*( typename id<T>::type c, BExpr<T,U> u )
 
 // A*s
 template <typename T, class U>
-BExpr <T, BExprWinScalarOp <T, BExpr<T,U>, Mul<T>>>
+BExpr <T, BExprWinScalarOp <T, BExpr<T,U>, Mul<T> > >
 operator*( BExpr<T,U> u, typename id<T>::type c )
 {
     typedef BExprWinScalarOp <T, BExpr<T,U>, Mul<T>> MulT;
@@ -423,7 +505,7 @@ operator*( BExpr<T,U> u, typename id<T>::type c )
 }
 // A + B
 template <typename T, class U, class V>
-BExpr <T, BExprWinElemOp <T, BExpr<T,U>, BExpr<T,V>, Add<T>>>
+BExpr <T, BExprWinElemOp <T, BExpr<T,U>, BExpr<T,V>, Add<T> > >
 operator+( BExpr<T,U> u, BExpr<T,V> v )
 {
     typedef BExprWinElemOp <T, BExpr<T,U>, BExpr<T,V>, Add<T>> SumT;
@@ -432,7 +514,7 @@ operator+( BExpr<T,U> u, BExpr<T,V> v )
 
 // A * B
 template <typename T, class U, class V>
-BExpr <T, BExprWinElemOp <T, BExpr<T,U>, BExpr<T,V>, Mul<T>>>
+BExpr <T, BExprWinElemOp <T, BExpr<T,U>, BExpr<T,V>, Mul<T> > >
 operator*( BExpr<T,U> u, BExpr<T,V> v )
 {
     typedef BExprWinElemOp <T, BExpr<T,U>, BExpr<T,V>, Mul<T>> MulT;
