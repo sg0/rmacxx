@@ -1,3 +1,4 @@
+#include <cassert>
 // simple test to demonstrate buffer
 // update in non-contiguous locations
 
