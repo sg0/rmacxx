@@ -1,4 +1,5 @@
 #include "rmacxx.hpp"
+#include <cassert>
 
 int main(int argc, char *argv[])
 {

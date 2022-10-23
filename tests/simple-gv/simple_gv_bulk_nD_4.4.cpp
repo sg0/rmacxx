@@ -1,4 +1,5 @@
 #include "rmacxx.hpp"
+#include <cassert>
 
 // regular data distribution
 
