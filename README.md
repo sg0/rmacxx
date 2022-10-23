@@ -1,4 +1,4 @@
-![Test Status](https://github.com/sg0/rmacxx/actions/workflows/main.yml/badge.svg?branch=main-CMake)
+![Test Status](https://github.com/sg0/rmacxx/actions/workflows/main.yml/badge.svg?branch=main)
 
 RMACXX is a prototypical C++14 interface over MPI-3 RMA, which focuses
 on providing a thin layer above MPI RMA, and at the same time aims to 
