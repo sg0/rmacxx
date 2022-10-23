@@ -2,7 +2,7 @@
 #include <math.h>
 #include <cassert>
 
-//#define ENDS 0
+//#define RMACXX_SUBARRAY_USE_END_COORDINATES 0
 
 int main(int argc, char *argv[])
 {

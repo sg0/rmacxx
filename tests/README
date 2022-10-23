@@ -20,3 +20,7 @@ run.sh /path/to/test/without/extension number_of_processes
 # Example from root:
 ./tests/run.sh tests/expr-elem/expr-elem 2
 # Note: You may have to give the script executable permissions to run it
+
+## Commented test cases
+Some test cases were written for our test driven development workflow. They are partially enumerated here but, until they are actually implemented, they will be commented out and replaced with a noop main function. Some examples include:
+ - dimensions/simple_gv_bulk_2D_subarray_ends_fail.2.cpp    

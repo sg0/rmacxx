@@ -833,6 +833,8 @@ public:
             else
             {
                 MPI_Datatype sarr_type;
+                // Todo: this call is failing a lot, and
+                // It seems to have to do with expr_ignore_last_get
                 MPI_Type_create_subarray( ndims_, dims_.data(),
                                           defer_put_xfer_nD_[expr_put_eval_counter_].subsizes_.data(),
                                           defer_put_xfer_nD_[expr_put_eval_counter_].starts_.data(),
@@ -1084,7 +1086,6 @@ public:
     int fillInto( T* buf ) const
     {
         int count = 0;
-        
         lock();
 
         if ( ndims_ > 1 )
@@ -1178,7 +1179,7 @@ public:
             expr_xfer1D_counter_ += 3;
         } // end of ndims == 1
 
-        std::cout<<"filled_into_win(This should probs only happen once?)"<<std::endl;
+        // std::cout<<"filled_into_win(This should probs only happen once?)"<<std::endl;
         expr_bptr_ = buf;
         
         unlock();
