@@ -730,30 +730,34 @@ public:
     inline void expr_ignore_last_get() const
     {
         lock();
-        // std::cout<<"Gets gotten(ab)"
-        //         <<expr_info_1D_[expr_issue_counter_-3]<<" "
-        //         <<expr_info_1D_[expr_issue_counter_-3+1]<<" "
-        //         <<expr_info_1D_[expr_issue_counter_-3+2]<<std::endl;
-        // std::cout<<"Size: "<<defer_xfer_nD_.size()<<std::endl;
-
-        // if ( ndims_ == 1 )
-        // {
+        if(is_expr_elem_)
+        {
             // counter adjustment
             expr_issue_counter_ -= 3;
             defer_put_xfer_1D_.emplace_back(
                 expr_info_1D_[expr_issue_counter_],
                 expr_info_1D_[expr_issue_counter_+1],
                 expr_info_1D_[expr_issue_counter_+2] );
-        // }
-        // else
-        // {
-        //     const int idx = defer_xfer_nD_.size()-1;
-        //     defer_put_xfer_nD_.emplace_back( defer_xfer_nD_[idx].target_,
-        //                                      defer_xfer_nD_[idx].count_,
-        //                                      defer_xfer_nD_[idx].subsizes_,
-        //                                      defer_xfer_nD_[idx].starts_ );
-        //     defer_xfer_nD_.pop_back();
-        // }
+        }else{
+            if ( ndims_ == 1 )
+            {
+                // counter adjustment
+                expr_issue_counter_ -= 3;
+                defer_put_xfer_1D_.emplace_back(
+                    expr_info_1D_[expr_issue_counter_],
+                    expr_info_1D_[expr_issue_counter_+1],
+                    expr_info_1D_[expr_issue_counter_+2] );
+            }
+            else
+            {
+                const int idx = defer_xfer_nD_.size()-1;
+                defer_put_xfer_nD_.emplace_back( defer_xfer_nD_[idx].target_,
+                                                defer_xfer_nD_[idx].count_,
+                                                defer_xfer_nD_[idx].subsizes_,
+                                                defer_xfer_nD_[idx].starts_ );
+                defer_xfer_nD_.pop_back();
+            }
+        }
 
         unlock();
     }
@@ -773,6 +777,7 @@ public:
     {
         lock();
 
+        printf("Is it here??");
         if ( watmc_ == ATOMIC_PUT_GET )
             MPI_Accumulate( &val, 1, TypeMap<T>(),
                             defer_put_xfer_1D_[expr_put_eval_counter_].target_,

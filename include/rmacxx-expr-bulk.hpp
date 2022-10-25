@@ -270,8 +270,8 @@ public:
 #if defined(RMACXX_BEXPR_USE_PLACEMENT_NEW_ALWAYS)
                 Handles<T>::instance().bexpr_handles_.emplace_back( buf );
 #else
-                Handles<T>::instance().eexpr_handles_.emplace_back( buf, is_placed );
-
+                // TODO: This seems wrong? Tests seem to work without it,
+                // Handles<T>::instance().eexpr_handles_.emplace_back( buf, is_placed );
 #endif
 #else
                 // TODO: CALL THE 

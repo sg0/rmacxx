@@ -26,21 +26,38 @@ int main(int argc, char *argv[])
     int *abuf = local_buffer.data();
     
     // create subarray type
-    rmacxx::RMACXX_Subarray_t<int> foo({1},{2},{10});
+    rmacxx::RMACXX_Subarray_t<int> foo({0},{9},{10});
 
     
     // put
-    win(1,{0},{9}) << foo(abuf);
+    win(1,{1},{2}) << foo(abuf);
     win.flush(1);
 
+    win.print("After put: ");
+    
     std::vector<int> results(10);
     win(1,{0},{9}) >> results.data();
     win.flush(1);
 
 
-    win.print("After: ");
+    // 0 0 0 0 0 0 0 0 0 0
+    // 0 [0 0] 0 0 0 0 0 0 0 ?
+
+    // 1 1 1 1 1 1 1 1 1 1
+    // [1 1 1 1 1 1 1 1 1 1]
+
+
+    // 0 0 0 0 0 0 0 0 0 0
+    // [0 0 0 0 0 0 0 0 0 0]
+
+    // 1 1 1 1 1 1 1 1 1 1
+    // 1 [1 1] 1 1 1 1 1 1 1
+
+
+    win.print("Before assert: ");
     if(win.rank()==0){
         int failedIndex = -1;
+        int* failedValue = nullptr;
 
         for (int i = 0; i < results.size();i++){
             if (1 <= i && i <= 2)
@@ -48,18 +65,22 @@ int main(int argc, char *argv[])
                 if (results[i] != 0) // If it was supposed to be overwritten but wasnt
                 {
                     failedIndex = i;
+                    failedValue = &results[i];
                     break;
                 }
-            }else {
+            } else {
                 if (results[i] != 1) // If it wasnt supposed to be overwritten but was
                 {
                     failedIndex = i;
+                    failedValue = &results[i];
                     break;
                 }
             }
         }
 
         std::cout<< "Failed index: "<<failedIndex<<std::endl;
+        if(failedValue!= nullptr)
+            std::cout<< "Failed value: "<<*failedValue<<std::endl;
 
         assert(failedIndex == -1);
     }
