@@ -195,66 +195,46 @@
                                         if (watmc_ == ATOMIC_PUT_GET) \
                                         { \
                                             if (ndims_ == 1) \
-                                            MPI_Accumulate(&origin.ptr_[origin.starts_[0]], 1, TypeMap<T>(), target_, \
+                                            MPI_Accumulate(&origin.ptr_[origin.starts_[0]], count_dimn_, TypeMap<T>(), target_, \
                                                     disp_, count_dimn_, TypeMap<T>(), MPI_REPLACE, win_); \
                                             else \
                                             { \
+                                                MPI_Datatype sarr_type; \
+                                                MPI_Type_create_subarray(ndims_, dims_.data(), subsizes_.data(), \
+                                                        starts_.data(), MPI_ORDER_C, TypeMap<T>(), &sarr_type); \
+                                                MPI_Type_commit(&sarr_type); \                                                
                                                 if ( origin.dtype_ == MPI_DATATYPE_NULL ) \
                                                 { \
-                                                    MPI_Datatype sarr_type; \
-                                                    MPI_Type_create_subarray(ndims_, dims_.data(), subsizes_.data(), \
-                                                            starts_.data(), MPI_ORDER_C, TypeMap<T>(), &sarr_type); \
-                                                    MPI_Type_commit(&sarr_type); \
                                                     MPI_Type_create_subarray(ndims_, origin.sizes_.data(), subsizes_.data(), \
                                                             origin.starts_.data(), MPI_ORDER_C, TypeMap<T>(), \
                                                             &origin.dtype_); \
                                                     MPI_Type_commit( &origin.dtype_ ); \
-                                                    MPI_Accumulate(origin.ptr_, 1, origin.dtype_, target_, \
-                                                            /*disp*/ 0, 1, sarr_type, MPI_REPLACE, win_); \
-                                                    MPI_Type_free(&sarr_type); \
                                                 } \
-                                                else \
-                                                { \
-                                                    MPI_Datatype sarr_type; \
-                                                    MPI_Type_create_subarray(ndims_, dims_.data(), subsizes_.data(), \
-                                                            starts_.data(), MPI_ORDER_C, TypeMap<T>(), &sarr_type); \
-                                                    MPI_Type_commit(&sarr_type); \
-                                                    MPI_Accumulate(origin.ptr_, 1, origin.dtype_, target_, \
-                                                            /*disp*/ 0, 1, sarr_type, MPI_REPLACE, win_); \
-                                                    MPI_Type_free(&sarr_type); \
-                                                } \
+                                                MPI_Accumulate(origin.ptr_, count_dimn_, origin.dtype_, target_, \
+                                                        /*disp*/disp_, count_dimn_, sarr_type, MPI_REPLACE, win_); \
+                                                MPI_Type_free(&sarr_type); \
                                             } \
                                         } \
                                         else \
                                         { \
                                             if (ndims_ == 1) \
-                                            MPI_Put(&origin.ptr_[origin.starts_[0]], 1, TypeMap<T>(), target_, \
+                                            MPI_Put(&origin.ptr_[origin.starts_[0]], count_dimn_, TypeMap<T>(), target_, \
                                                     disp_, count_dimn_, TypeMap<T>(), win_); \
                                             else \
                                             { \
+                                                MPI_Datatype sarr_type; \
+                                                MPI_Type_create_subarray(ndims_, dims_.data(), subsizes_.data(), \
+                                                        starts_.data(), MPI_ORDER_C, TypeMap<T>(), &sarr_type); \
+                                                MPI_Type_commit(&sarr_type); \
                                                 if ( origin.dtype_ == MPI_DATATYPE_NULL ) \
                                                 { \
-                                                    MPI_Datatype sarr_type; \
-                                                    MPI_Type_create_subarray(ndims_, dims_.data(), subsizes_.data(), \
-                                                            starts_.data(), MPI_ORDER_C, TypeMap<T>(), &sarr_type); \
-                                                    MPI_Type_commit(&sarr_type); \
                                                     MPI_Type_create_subarray(ndims_, origin.sizes_.data(), subsizes_.data(), \
                                                             origin.starts_.data(), MPI_ORDER_C, TypeMap<T>(), &origin.dtype_ ); \
                                                     MPI_Type_commit( &origin.dtype_ ); \
-                                                    MPI_Put(origin.ptr_, 1, origin.dtype_, target_, \
-                                                            /*disp*/ 0, 1, sarr_type, win_); \
-                                                    MPI_Type_free(&sarr_type); \
                                                 } \
-                                                else \
-                                                { \
-                                                    MPI_Datatype sarr_type; \
-                                                    MPI_Type_create_subarray(ndims_, dims_.data(), subsizes_.data(), \
-                                                            starts_.data(), MPI_ORDER_C, TypeMap<T>(), &sarr_type); \
-                                                    MPI_Type_commit(&sarr_type); \
-                                                    MPI_Put(origin.ptr_, 1, origin.dtype_, target_, \
-                                                            /*disp*/ 0, 1, sarr_type, win_); \
-                                                    MPI_Type_free(&sarr_type); \
-                                                } \
+                                                MPI_Put(origin.ptr_, count_dimn_, origin.dtype_, target_, \
+                                                        /*disp*/ disp_, count_dimn_, sarr_type, win_); \
+                                                MPI_Type_free(&sarr_type); \
                                             } \
                                         } \
                                         if (wcmpl_ == LOCAL_FLUSH) \

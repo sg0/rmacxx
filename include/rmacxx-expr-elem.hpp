@@ -166,10 +166,12 @@ public:
     void operator >>( EExpr<T,W> const& win )
     {
         bool is_placed = true;
+        printf("AAAA\n");
 
         // ignore previous get
         win.expr_ignore_last_get();
-        
+        printf("BBBB\n");
+
         // post remaining gets for current
         // object
         eexpr_outstanding_gets();

@@ -23,13 +23,17 @@ int main(int argc, char *argv[])
     
     int num1, num2, num3, num4, num5;
 
+    std::cout << "Before 1" << std::endl;
     win(1,{0,0}) + 2*win(1,{0,0}) + 3*win(1,{2,2})    >> win(0,{5,5});
+    std::cout << "After 1" << std::endl;
     win(1,{0,0}) + win(1,{2,2})                     >> win(0,{6,6});
     win(1,{1,1}) + 3*win(1,{4,4})                   >> win(1,{7,7});
     2*win(1,{2,2}) + 3*win(1,{3,3})                 >> win(1,{8,8});
     win(1,{2,2}) + 2*win(1,{0,0}) + 5*win(1,{3,3})    >> win(1,{9,9});
 
+    std::cout << "Preflush 1" << std::endl;
     win.flush();
+    std::cout << "Postflush 1" << std::endl;
 
     // check results
     win(0,{5,5}) >> num1;
@@ -38,13 +42,9 @@ int main(int argc, char *argv[])
     win(1,{8,8}) >> num4;
     win(1,{9,9}) >> num5;
     
+    std::cout << "Preflush 2" << std::endl;
     win.flush();
-
-    assert(num1 == 6);
-    assert(num2 == 2);
-    assert(num3 == 4);
-    assert(num4 == 5);
-    assert(num5 == 8);
+    std::cout << "Postflush 2" << std::endl;
 
     if (win.rank() == 0)
     {
@@ -56,9 +56,14 @@ int main(int argc, char *argv[])
         std::cout << "win(1,{1}) + 3*win(1,{4}) = " << num3 << std::endl;
         std::cout << "2*win(1,{2}) + 3*win(1,{3}) = " << num4 << std::endl;
         std::cout << "win(1,{2}) + 2*win(1,{0}) + 5*win(1,{3}) = " << num5 << std::endl;
+
+        assert(num1 == 6);
+        assert(num2 == 2);
+        assert(num3 == 4);
+        assert(num4 == 5);
+        assert(num5 == 8);
         std::cout << "Validation PASSED." << std::endl;
     }
-
     win.wfree();
 
     MPI_Finalize();
