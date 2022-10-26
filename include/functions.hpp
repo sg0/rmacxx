@@ -5,7 +5,8 @@
 // Prints a vector in a readable format
 template<typename T> std::string print_vector(std::vector<T> vec) {
     std::cout<<"[ ";
-    for (int i = 0; i < vec.size(); i++) {
+    int N = vec.size();
+    for (int i = 0; i < N; i++) {
         std::cout<<(vec[i])<<" ";
     }
     std::cout<<"]"<<std::endl;

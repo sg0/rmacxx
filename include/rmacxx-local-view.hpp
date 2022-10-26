@@ -22,7 +22,6 @@ class Window<T, LOCAL_VIEW, wuse_, wcmpl_, watmc_, wtsft_>
     #define LW_RESERVE_EXPR() {}
     #define LW_CLEAR_EXPR() {}
 #else
-    //TODO: FIX AND REIMPLEMENT FLUSH
     #define LWFLUSH() do{ \
         for(auto expr:expressions_){ \
             FuturesManager<T>::instance().unblock_expr(expr);\

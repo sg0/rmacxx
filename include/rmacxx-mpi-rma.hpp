@@ -202,7 +202,7 @@
                                                 MPI_Datatype sarr_type; \
                                                 MPI_Type_create_subarray(ndims_, dims_.data(), subsizes_.data(), \
                                                         starts_.data(), MPI_ORDER_C, TypeMap<T>(), &sarr_type); \
-                                                MPI_Type_commit(&sarr_type); \                                                
+                                                MPI_Type_commit(&sarr_type); \
                                                 if ( origin.dtype_ == MPI_DATATYPE_NULL ) \
                                                 { \
                                                     MPI_Type_create_subarray(ndims_, origin.sizes_.data(), subsizes_.data(), \
