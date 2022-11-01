@@ -1,5 +1,5 @@
+#define RMACXX_USE_FUTURES
 #include "rmacxx.hpp"
-#define RMACXX_USE_CLASSIC_HANDLES
 
 #include <cassert>
 
@@ -28,14 +28,14 @@ int main(int argc, char *argv[])
     double* data3 = chunk3.data();
     double* data4 = chunk4.data();
 
-    // rmacxx::Window<double,LOCAL_VIEW,EXPR> never_to_be_flushed({20,20});
-    // never_to_be_flushed.fill(1);
-    // // These expressions should never be flushed...
-    // 1*never_to_be_flushed(0,{0 ,0 },{9 ,9 }) >> never_to_be_flushed(0,{0 ,0 },{9,9});
-    // 2*never_to_be_flushed(0,{10,10},{19,19}) >> never_to_be_flushed(0,{10,10},{19,19});
-    // 3*never_to_be_flushed(0,{10,0 },{19, 9}) >> never_to_be_flushed(0,{10,0 },{19,9});
-    // 4*never_to_be_flushed(0,{0, 10},{9 ,19}) >> never_to_be_flushed(0,{0, 10},{9,19});
-    // never_to_be_flushed.wfree();
+    rmacxx::Window<double,LOCAL_VIEW,EXPR> never_to_be_flushed({20,20});
+    never_to_be_flushed.fill(1);
+    // These expressions should never be flushed...
+    1*never_to_be_flushed(0,{0 ,0 },{9 ,9 }) >> never_to_be_flushed(0,{0 ,0 },{9,9});
+    2*never_to_be_flushed(0,{10,10},{19,19}) >> never_to_be_flushed(0,{10,10},{19,19});
+    3*never_to_be_flushed(0,{10,0 },{19, 9}) >> never_to_be_flushed(0,{10,0 },{19,9});
+    4*never_to_be_flushed(0,{0, 10},{9 ,19}) >> never_to_be_flushed(0,{0, 10},{9,19});
+    never_to_be_flushed.wfree();
     
 
     5*window(0,{0 ,0 },{9 ,9 }) >> window(1,{0 ,0 },{9,9});

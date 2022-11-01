@@ -35,6 +35,7 @@ int main(int argc, char *argv[])
     }
 
     win.flush();
+    MPI_Barrier(MPI_COMM_WORLD);
 
     int nums0[10];
     int nums1[2];

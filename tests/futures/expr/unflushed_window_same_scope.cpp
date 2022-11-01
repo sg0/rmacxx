@@ -1,5 +1,5 @@
+#define RMACXX_USE_FUTURES
 #include "rmacxx.hpp"
-#define RMACXX_USE_CLASSIC_HANDLES
 
 #include <cassert>
 
@@ -27,14 +27,14 @@ int main(int argc, char *argv[])
     double num3 = 1.234;
     double num4 = 1.234;
     
-    // rmacxx::Window<double,LOCAL_VIEW,EXPR> never_to_be_flushed({20,20});
-    // never_to_be_flushed.fill(1);
-    // // These expressions should never be flushed...
-    // 1*never_to_be_flushed(0,{0,0}) >> never_to_be_flushed(0,{0,0});
-    // 2*never_to_be_flushed(0,{0,1}) >> never_to_be_flushed(0,{0,1});
-    // 3*never_to_be_flushed(1,{1,0}) >> never_to_be_flushed(1,{1,0});
-    // 4*never_to_be_flushed(1,{1,1}) >> never_to_be_flushed(1,{1,1});
-    // never_to_be_flushed.wfree();
+    rmacxx::Window<double,LOCAL_VIEW,EXPR> never_to_be_flushed({20,20});
+    never_to_be_flushed.fill(1);
+    // These expressions should never be flushed...
+    1*never_to_be_flushed(0,{0,0}) >> never_to_be_flushed(0,{0,0});
+    2*never_to_be_flushed(0,{0,1}) >> never_to_be_flushed(0,{0,1});
+    3*never_to_be_flushed(1,{1,0}) >> never_to_be_flushed(1,{1,0});
+    4*never_to_be_flushed(1,{1,1}) >> never_to_be_flushed(1,{1,1});
+    never_to_be_flushed.wfree();
     window.print("Before put..");
    
     5*window(0,{0,0}) >> window(1,{0,0});

@@ -1,5 +1,5 @@
+#define RMACXX_USE_FUTURES
 #include "rmacxx.hpp"
-#define RMACXX_USE_CLASSIC_HANDLES
 
 #include <cassert>
 
@@ -42,7 +42,7 @@ int main(int argc, char *argv[])
 
     // TODO: It seems that reading then writing to a location causes a race condition.
     // Is there a way to resolve this race condition by running only the target process?
-    // Maybe an mpi barrier? if &only if reads and writes contain any of the same elems
+    // Maybe an mpi barrier? if only if reads and writes contain any of the same elems
     // Would that introduce too much overhead? O(n) cycles where n is number of dimensions
     // 5*window(0,{0,0}) >> window(0,{0,0});
     // 6*window(0,{0,1}) >> window(0,{0,1});

@@ -1,3 +1,4 @@
+#define RMACXX_USE_FUTURES
 #include "rmacxx.hpp"
 #include <cassert>
 
@@ -29,7 +30,7 @@ int main(int argc, char *argv[])
     win(1,{2}) + 2*win(1,{0}) + 5*win(1,{3}) >> win(1,{9});
 
     std::cout << "About to flush" << std::endl;
-    win.flush(); // NOTE: Local flush still requires a flush to preform computuation
+    win.flush(); // NOTE: Local flush still requires a flush to perform computation
     MPI_Barrier(MPI_COMM_WORLD);
 
     // check results
