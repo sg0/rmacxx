@@ -1,3 +1,4 @@
+#define RMACXX_USE_FUTURES
 #include "rmacxx.hpp"
 
 #include <cassert>
@@ -9,7 +10,8 @@ int main(int argc, char *argv[])
 
     // create window
     rmacxx::Window<double,LOCAL_VIEW,EXPR,LOCAL_FLUSH> win({20,20});
-    
+    // rmacxx::Window<double, LOCAL_VIEW, EXPR> win({20,20});
+   
     // in this case, user still needs to invoke
     // flush, because remote completion to 
     // window is not guaranteed
@@ -45,6 +47,7 @@ int main(int argc, char *argv[])
 
     // flush to complete expression
     win.flush();
+    // MPI_Barrier(MPI_COMM_WORLD);
 
     win(0,{4,4},{7,7}) >> data1;
     win(1,{8,8},{11,11}) >> data2;

@@ -40,7 +40,7 @@ function(get_test_info path_var without_ext_var test_name_var num_processes_var)
     cmake_path(REMOVE_EXTENSION num_from_ext_no_period OUTPUT_VARIABLE num_processes)
   endif()
   string(REPLACE "/"
-    "_" new_path
+    "." new_path
     ${new_path})
   set(${test_name_var} ${new_path} PARENT_SCOPE)
   set(${without_ext_var} ${without_ext} PARENT_SCOPE)

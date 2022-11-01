@@ -210,7 +210,7 @@ public:
         if ( win.is_win_b() )
         {
             fillInto( buf );
-            win.bexpr_outstanding_put( buf );\
+            win.bexpr_outstanding_put( buf );
         }
         else
         {
