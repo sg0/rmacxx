@@ -7,13 +7,19 @@ template <typename T>
 concept always_satisfied = true;
 
 // Check if data type is contiguous
+//template <typename T>
+//concept is_contig = std::contiguous_iterator<typename T::iterator>;
 template <typename T>
-concept is_contig = std::contiguous_iterator<typename T::iterator>;
+concept is_contig = std::ranges::contiguous_range<T>;
 
-// Integer is positive
-constexpr bool is_pos(int x) {
-    return x > 0;
-}
+template <typename R, typename T>
+concept contig = is_contig<R> && std::is_same<std::ranges::range_value_t<R>, T>::value;
+
+template <typename R, typename T>
+concept output_contig = contig<R, T> && std::ranges::output_range<R,T>;
+
+template <typename R>
+concept input_contig_ints = contig<R,int> && std::ranges::input_range<R>;
 
 // Ensure two containers are the same size
 template <typename T, typename U>
@@ -26,6 +32,8 @@ constexpr bool same_size(T it1,  U it2) {
 //constexpr bool check_coords(rmacxx::Window<T, GLOBAL_VIEW> window, rmacxx::RMACXX_Subarray_t<T, GLOBAL_VIEW> subarray) {
 
 //}
+
+
 
 
 
