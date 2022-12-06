@@ -6,3 +6,5 @@ tests/**/*.test
 /cmake-build-debug
 /build
 Testing/
+bench_*
+CMakeFiles/
