@@ -43,7 +43,23 @@
       {
         "name": "default",
         "configurePreset": "default",
-        "output": {"outputOnFailure": true},
+        "filter": {
+          "exclude": {
+            "name": "bench_"
+          }
+        },
+        "output": { "outputOnFailure": true },
+        "execution": {"noTestsAction": "ignore", "stopOnFailure": false}
+      },
+      {
+        "name": "bench",
+        "configurePreset": "default",
+        "filter": {
+          "include": {
+            "name": "bench"
+          }
+        },
+        "output": { "outputOnFailure": true },
         "execution": {"noTestsAction": "ignore", "stopOnFailure": false}
       }
     ]

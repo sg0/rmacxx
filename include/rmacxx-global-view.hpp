@@ -297,7 +297,7 @@ public:
         if (!no_gaps_exist) {
             throw -1;
         }
-        std::cout<<(no_gaps_exist?"THERE ARE NO GAPS AT ALL":"There are gaps at all.")<<std::endl;
+        // std::cout<<(no_gaps_exist?"THERE ARE NO GAPS AT ALL":"There are gaps at all.")<<std::endl;
 
         // Print statements to check the values of rlo_ and rhi_
         /*
@@ -310,14 +310,14 @@ public:
         }
         */
 
-        std::cout<<"ENDING HERE"<<std::endl;
+        // std::cout<<"ENDING HERE"<<std::endl;
         
 
-        std::cout<<"[ ";
-        for (int i = 0; i < los.size(); i++) {
-            std::cout<<los[0][i]<<" ";
-        }
-        std::cout<<"]"<<std::endl;
+        // std::cout<<"[ ";
+        // for (int i = 0; i < los.size(); i++) {
+        //     std::cout<<los[0][i]<<" ";
+        // }
+        // std::cout<<"]"<<std::endl;
 
 
 #endif
@@ -337,7 +337,7 @@ public:
                           sizeof( T ), winfo_, comm_, &base, &win_ );
         //std::cout<<"testing winfo: "<<*winfo_<<std::endl;
         //std::cout<<"testing comm: "<<*comm_<<std::endl;
-        std::cout<<"testing base: "<<*base<<std::endl;
+        // std::cout<<"testing base: "<<*base<<std::endl;
         //std::cout<<"testing win: "<<*win_<<std::endl;
         MPI_Win_lock_all( MPI_MODE_NOCHECK, win_ );
         iswinlocked_ = true;
@@ -1827,7 +1827,7 @@ public:
         nhi.insert(nhi.end(), store_hi.begin(), store_hi.end());
         if (origin.sizes_ != nhi) {
             //failed check
-            std::cout << "Coordinates not equal" << std::endl;
+            // std::cout << "Coordinates not equal" << std::endl;
             abort();
         }
 #endif
@@ -1845,7 +1845,7 @@ public:
         }
         if (origin.sizes_ != sizes) {
             //failed check
-            std::cout << "Coordinates not equal" << std::endl;
+            // std::cout << "Coordinates not equal" << std::endl;
             abort();
         }
 #endif
