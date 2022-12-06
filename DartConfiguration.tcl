@@ -26,7 +26,7 @@ SubmitURL: http://
 NightlyStartTime: 00:00:00 EDT
 
 # Commands for the build/test/submit cycle
-ConfigureCommand: "/weka/apps/cmake/3.17.0/intel/20.0/bin/cmake" "/home/marcel.mukundi/rmacxx"
+ConfigureCommand: "/weka/apps/cmake/3.17.0/gcc/7.3.0/bin/cmake" "/home/marcel.mukundi/rmacxx"
 MakeCommand: /usr/bin/gmake -i
 DefaultCTestConfigurationType: Release
 
