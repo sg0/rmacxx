@@ -78,24 +78,19 @@ int main(int argc, char *argv[])
     }
     
     // fill the part of the local_buffer that will be extracted with 3s
-    int formula_result = 0; // generate first index of the transfer within the local_buffer 
-    int dimensions_product;
-    for (int i = 0; i < dimensions; i++) { // run once per dimension
-        dimensions_product = 1;
-        for (int j = i + 1; j < dimensions; j++) { // for each dimension excluding this one and all before
-            dimensions_product *= transfer_dims[j];
-        }
-        formula_result += extract_offset[i] * dimensions_product;
-    }
-
-    for (int i = 0; i < transfer_size; i++) {
-        local_buffer[i + formula_result] = 3;
-    }
+    // (the transfer_dims box starting at extract_offset of the
+    // local_buffer_dims array, C order)
+    for (int i = 0; i < transfer_dims[0]; i++)
+        for (int j = 0; j < transfer_dims[1]; j++)
+            for (int k = 0; k < transfer_dims[2]; k++)
+                local_buffer[((extract_offset[0] + i) * local_buffer_dims[1]
+                              + (extract_offset[1] + j)) * local_buffer_dims[2]
+                             + (extract_offset[2] + k)] = 3;
 
     // create subarray type for global transfer                                                
     rmacxx::RMACXX_Subarray_t<int,GLOBAL_VIEW> sub(
         {extract_offset[0], extract_offset[1], extract_offset[2]},  //starts  
-        {transfer_dims[0],transfer_dims[1],transfer_dims[2]}        //sizes
+        {local_buffer_dims[0],local_buffer_dims[1],local_buffer_dims[2]} //sizes of the origin array
     );
 
     // put
