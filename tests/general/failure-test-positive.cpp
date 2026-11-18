@@ -14,4 +14,5 @@ int main(int argc, char *argv[]) {
     assert(!int1_ok);
     const bool int2_ok = rmacxx::is_pos(a);
     assert(int2_ok);
+    return 0;
 }

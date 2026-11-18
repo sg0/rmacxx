@@ -29,7 +29,7 @@ int main(int argc, char *argv[])
    
 //     // create processes
 //     int rank;
-//     MPI_Init( &argc, &argv );
+//     rmacxx::init( &argc, &argv );
 //     MPI_Comm_rank( MPI_COMM_WORLD, &rank );
 
 
@@ -149,7 +149,7 @@ int main(int argc, char *argv[])
 
 //     local_buffer.clear();
 
-//     MPI_Finalize();
+//     rmacxx::finalize();
 
 //     // run a quick assertion test
 //     if (rank == 0) {
@@ -162,4 +162,5 @@ int main(int argc, char *argv[])
 //     }
 
 //     return 0;
+    return 0;
 }

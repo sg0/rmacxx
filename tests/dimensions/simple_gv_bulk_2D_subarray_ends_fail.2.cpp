@@ -15,7 +15,7 @@ int main(int argc, char *argv[])
 
     // // create processes
     // int rank;
-    // MPI_Init( &argc, &argv );
+    // rmacxx::init( &argc, &argv );
     // MPI_Comm_rank( MPI_COMM_WORLD, &rank );
     // double t0 = MPI_Wtime();
 
@@ -73,8 +73,9 @@ int main(int argc, char *argv[])
     // win.wfree();
 
     
-    // MPI_Finalize();
+    // rmacxx::finalize();
 
     // // test should have thrown error so this should be true
     // assert(error);
+    return 0;
 }

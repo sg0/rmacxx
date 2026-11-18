@@ -5,7 +5,7 @@
 int main(int argc, char *argv[])
 {
 
-    MPI_Init( &argc, &argv );
+    rmacxx::init( &argc, &argv );
 
     // create window
     rmacxx::Window<double,LOCAL_VIEW,EXPR> win({10,10});
@@ -72,7 +72,7 @@ int main(int argc, char *argv[])
     delete []data1;
     delete []data2;
 
-    MPI_Finalize();
+    rmacxx::finalize();
 
     return 0;
 }

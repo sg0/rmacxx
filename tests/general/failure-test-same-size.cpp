@@ -20,4 +20,5 @@ int main(int argc, char *argv[]) {
     assert(v1l1_ok);
     const bool v1a1_ok = rmacxx::same_size(v1, a1);
     assert(v1a1_ok);
+    return 0;
 }

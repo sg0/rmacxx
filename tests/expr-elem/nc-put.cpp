@@ -6,7 +6,7 @@
 
 int main(int argc, char *argv[])
 {    
-    MPI_Init( &argc, &argv );
+    rmacxx::init( &argc, &argv );
    
     // create window
     rmacxx::Window<int> win({10});
@@ -87,7 +87,7 @@ int main(int argc, char *argv[])
     
     win.wfree();
 
-    MPI_Finalize();
+    rmacxx::finalize();
 
     return 0;
 }

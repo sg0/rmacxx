@@ -7,7 +7,7 @@
 // int main(int argc, char *argv[])
 // {
 
-//     MPI_Init( &argc, &argv );
+//     rmacxx::init( &argc, &argv );
 
 //     // create window
 //     rmacxx::Window<double, LOCAL_VIEW, EXPR> win({10,10});
@@ -106,7 +106,7 @@
 //     delete[] data3;
 //     delete[] data4;    
 // #endif
-//     MPI_Finalize();
+//     rmacxx::finalize();
 
 //     return 0;
 // }
@@ -123,7 +123,7 @@ const int N =4; // TODO: for some reason, some N doesnt work Investigate!
 int main(int argc, char *argv[])
 {
 
-    MPI_Init( &argc, &argv );
+    rmacxx::init( &argc, &argv );
 
     // create window
     rmacxx::Window<double,LOCAL_VIEW,EXPR> win({20,20});
@@ -216,7 +216,7 @@ int main(int argc, char *argv[])
     chunk3.clear();
     chunk4.clear();
 
-    MPI_Finalize();
+    rmacxx::finalize();
 
     return 0;
 }

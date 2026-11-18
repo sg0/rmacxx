@@ -4,6 +4,7 @@
 #define RMACXX_SUBARRAY_USE_END_COORDINATES
 // This test should remain commented out until subarray bounds checking is properly implemented
 int main(int argc, char *argv[]){
+    return 0;
 }
 // int main(int argc, char *argv[])
 // {
@@ -23,7 +24,7 @@ int main(int argc, char *argv[]){
 
 //     // create processes
 //     int rank;
-//     MPI_Init( &argc, &argv );
+//     rmacxx::init( &argc, &argv );
 //     MPI_Comm_rank( MPI_COMM_WORLD, &rank );
 //     double t0 = MPI_Wtime();
 
@@ -123,7 +124,7 @@ int main(int argc, char *argv[]){
 //     }
 
 //     win.flush();
-//     MPI_Finalize();
+//     rmacxx::finalize();
 
 //     // all of the tests should have thrown an error, so all of these should be true
 //     for (int i = 0; i < 6; i++) {

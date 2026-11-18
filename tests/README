@@ -1,26 +1,26 @@
-# typically...
-mpic++ -I../src -std=c++14 -g -o tt test.cpp
+# GPU build (CUDA + NVSHMEM, MPI bootstrap), from the repository root:
+cmake --preset default -DNVSHMEM_HOME=/path/to/nvshmem -DCMAKE_CUDA_ARCHITECTURES=90
+cmake --build --preset default
+ctest --preset default
 
-# if bulk expressions are used, then link to BLAS
-# THIS IS PENDING AFTER LATEST DESIGN CHANGE
-mpic++ -I../src -std=c++14 -g -o tt test.cpp -lcblas -lm
-
-# if you want to use MKL for bulk expressions...make sure MKLROOT is defined in bashrc/bash.profile
-# THIS IS PENDING AFTER LATEST DESIGN CHANGE
-mpic++ -std=c++14 -O3 -qopenmp -DMKL_ILP64 -I${MKLROOT}/include -g -I../src -o tt test.cpp -pthread -L${MKLROOT}/lib/intel64 -lmkl_intel_ilp64 -lmkl_intel_thread -lmkl_core -lm
-
-# To run all tests:
+# or with make, from tests/ (set NVSHMEM_HOME and ARCH, e.g. ARCH=sm_90):
 make check -k -B
 
-# To run all tests from root:
-make -C tests check -k -B
+# single test (from root):
+tests/run.sh tests/expr-elem/expr-elem 2
 
-# To use the shell script:
-run.sh /path/to/test/without/extension number_of_processes
-# Example from root:
-./tests/run.sh tests/expr-elem/expr-elem 2
-# Note: You may have to give the script executable permissions to run it
+# CPU emulator (no GPU / CUDA / NVSHMEM / MPI needed), from root:
+cmake --preset emulator && cmake --build --preset emulator && ctest --preset emulator
+# or
+tests/emulator/run_tests.sh                       # all tests
+tests/emulator/run_tests.sh tests/expr-elem/expr-elem.cpp
+
+# The number of processes is taken from the file name: name.N.cpp runs on
+# N processes, otherwise 2.
+
+# Tests use rmacxx::init / rmacxx::finalize instead of MPI_Init / MPI_Finalize
+# (MPI is still available, e.g. MPI_Comm_rank, MPI_Wtime, MPI_Abort).
 
 ## Commented test cases
 Some test cases were written for our test driven development workflow. They are partially enumerated here but, until they are actually implemented, they will be commented out and replaced with a noop main function. Some examples include:
- - dimensions/simple_gv_bulk_2D_subarray_ends_fail.2.cpp    
+ - dimensions/simple_gv_bulk_2D_subarray_ends_fail.2.cpp

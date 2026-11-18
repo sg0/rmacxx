@@ -8,7 +8,7 @@
 int main(int argc, char *argv[])
 {
 
-	MPI_Init(&argc, &argv);
+	rmacxx::init( &argc, &argv );
     double t0 = MPI_Wtime();
 
 	int num1, num2, num3, num4, num5;
@@ -16,7 +16,7 @@ int main(int argc, char *argv[])
     rmacxx::Window<int, LOCAL_VIEW> win({10,10});
     win.fill(1);
 
-    std::vector<std::tuple<std::initializer_list<int>,std::initializer_list<int>>> starts_and_ends({
+    std::vector<std::tuple<std::vector<int>,std::vector<int>>> starts_and_ends({
         {{1,2},{2,6}},
         {{4,2},{5,2}},
         {{2,6},{4,6}},
@@ -43,7 +43,7 @@ int main(int argc, char *argv[])
         {{0,2},{3,3}},
     });
 
-    std::tuple<std::initializer_list<int>,std::initializer_list<int>>& my_starts_and_ends = starts_and_ends[win.rank()];
+    std::tuple<std::vector<int>,std::vector<int>>& my_starts_and_ends = starts_and_ends[win.rank()];
 
     std::vector<int> start(std::get<0>(my_starts_and_ends));
     std::vector<int> end(std::get<1>(my_starts_and_ends));
@@ -52,21 +52,21 @@ int main(int argc, char *argv[])
 
     std::vector<int> buff(size);
     std::fill(buff.begin(), buff.end(), 3);
-    win(win.rank(), std::get<0>(my_starts_and_ends),std::get<1>(my_starts_and_ends)) << buff.data();
+    win(win.rank(), {start[0], start[1]}, {end[0], end[1]}) << buff.data();
     win.flush();
     MPI_Barrier(MPI_COMM_WORLD);
     std::vector<std::vector<int>> all_results;
     all_results.reserve(24); 
     if(win.rank() == 0){
         for(int rank = 0; rank < 24; rank++){
-            std::tuple<std::initializer_list<int>,std::initializer_list<int>>& current_starts_and_ends = starts_and_ends[rank];
+            std::tuple<std::vector<int>,std::vector<int>>& current_starts_and_ends = starts_and_ends[rank];
 
             std::vector<int> start(std::get<0>(current_starts_and_ends));
             std::vector<int> end(std::get<1>(current_starts_and_ends));
 
             int size = (end[0]-start[0]+1)*(end[1]-start[1]+1);
             std::vector<int> results(size);
-            win(rank,std::get<0>(current_starts_and_ends),std::get<1>(current_starts_and_ends)) >> results.data();
+            win(rank, {start[0], start[1]}, {end[0], end[1]}) >> results.data();
             all_results.push_back(results);
             double t1 = MPI_Wtime();
             std::cout<<"Time elapsed: "<<t1 - t0<<std::endl;
@@ -115,7 +115,7 @@ int main(int argc, char *argv[])
     }
 
     win.wfree();
-    MPI_Finalize();
+    rmacxx::finalize();
 
 	return 0;
 }

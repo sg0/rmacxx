@@ -5,7 +5,7 @@
 int main(int argc, char *argv[])
 {
 
-    MPI_Init( &argc, &argv );
+    rmacxx::init( &argc, &argv );
 
     int num1 = -1, num2 = -1, num3 = -1, num4 = -1, num5 = -1;
     
@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
 
     win.wfree();
 
-    MPI_Finalize();
+    rmacxx::finalize();
 
     return 0;
 }

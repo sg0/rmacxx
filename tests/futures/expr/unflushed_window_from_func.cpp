@@ -17,7 +17,7 @@ void create_forgotten_win(){
 int main(int argc, char *argv[])
 {
 
-    MPI_Init( &argc, &argv );
+    rmacxx::init( &argc, &argv );
 
     // create window
     rmacxx::Window<double,LOCAL_VIEW,EXPR> window({20,20});
@@ -78,7 +78,7 @@ int main(int argc, char *argv[])
     
     window.wfree();
 
-    MPI_Finalize();
+    rmacxx::finalize();
 
     return 0;
 }

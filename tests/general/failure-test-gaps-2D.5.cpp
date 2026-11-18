@@ -7,7 +7,7 @@ int main(int argc, char *argv[])
 {
 
 	int rank;
-    MPI_Init( &argc, &argv );
+    rmacxx::init( &argc, &argv );
     MPI_Comm_rank( MPI_COMM_WORLD, &rank );
     double t0 = MPI_Wtime();
 
@@ -41,9 +41,10 @@ int main(int argc, char *argv[])
         t1 = MPI_Wtime();     
     } catch(int construction_error) { //if throws exception, then should pass
         t1 = MPI_Wtime();     
-        MPI_Finalize();
+        rmacxx::finalize();
        exception_was_thrown = true;
     }
     std::cout<<"Time elapsed: "<<t1 - t0<<std::endl;
     assert(exception_was_thrown);
+    return 0;
 }

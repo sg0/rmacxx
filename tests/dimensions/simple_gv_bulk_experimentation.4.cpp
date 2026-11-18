@@ -8,7 +8,7 @@ int main(int argc, char *argv[])
 {
     int rank;
 
-    MPI_Init( &argc, &argv );
+    rmacxx::init( &argc, &argv );
     MPI_Comm_rank( MPI_COMM_WORLD, &rank );
     
     int dimensions = 3; // number of dimensions
@@ -225,7 +225,7 @@ int main(int argc, char *argv[])
 
     data.clear();
 
-    MPI_Finalize();
+    rmacxx::finalize();
 
     std::cout<<temp<<std::endl;
 

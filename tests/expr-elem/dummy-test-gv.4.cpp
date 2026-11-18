@@ -7,7 +7,7 @@ int main(int argc, char *argv[])
 {
 
 	// int rank;
-    // MPI_Init( &argc, &argv );
+    // rmacxx::init( &argc, &argv );
     // MPI_Comm_rank( MPI_COMM_WORLD, &rank );
     // double t0 = MPI_Wtime();
 
@@ -74,7 +74,7 @@ int main(int argc, char *argv[])
 
     // std::cout<<"Time elapsed: "<<t1 - t0<<std::endl;
 
-	// MPI_Finalize();
+	// rmacxx::finalize();
 
     // // run a quick assertion test
     // if (rank == 0) {
@@ -87,4 +87,5 @@ int main(int argc, char *argv[])
     // }
 
 	// return 0;
+    return 0;
 }

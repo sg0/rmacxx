@@ -3,7 +3,7 @@
 int main(int argc, char *argv[])
 {
 
-    MPI_Init( &argc, &argv );
+    rmacxx::init( &argc, &argv );
 
     // create window
     //rmacxx::Window<int, LOCAL_FLUSH, ANONE> win({10,10});
@@ -54,7 +54,7 @@ int main(int argc, char *argv[])
 
     a.clear();
 
-    MPI_Finalize();
+    rmacxx::finalize();
 
     return 0;
 }
