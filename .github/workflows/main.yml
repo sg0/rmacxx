@@ -11,7 +11,7 @@ jobs:
     name: emulator
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Set up g++
         run:  (echo "y" | sudo apt install g++-12) && sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-12 50
       - name: Get CMake
