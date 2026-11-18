@@ -5,10 +5,12 @@ template <typename T, class P>
 class RefBExpr
 {
 public:
-    RefBExpr( P const& p ) : p_( p ) {}
+    // idx_ identifies this particular window access within the
+    // window's pending expression records
+    RefBExpr( P const& p, int idx ) : p_( p ), idx_( idx ) {}
 
     inline bool is_win_b() const { return p_.is_win_b(); }
-    inline int get_count() const { return p_.get_count(); }
+    inline int get_count() const { return p_.get_count( idx_ ); }
     inline WinCompletion completion() const { return p_.completion(); }
     inline void flush_expr() const { return p_.flush_expr(); }
     inline void flush_win() const { return p_.flush_win(); }
@@ -16,13 +18,13 @@ public:
     inline void block_on_expr(exprid expr) const { p_.block_on_expr(expr); }
 #endif
     inline void bexpr_outstanding_gets() const
-    { p_.bexpr_outstanding_gets(); }
+    { p_.bexpr_outstanding_gets( idx_ ); }
     inline void bexpr_outstanding_put( const T* buf ) const
-    { p_.bexpr_outstanding_put( buf ); }
+    { p_.bexpr_outstanding_put( idx_, buf ); }
     inline void expr_ignore_last_get() const
-    { p_.expr_ignore_last_get(); }
+    { p_.expr_ignore_last_get( idx_ ); }
 
-    inline int fillInto(T* buf) const{ return p_.fillInto( buf ); }
+    inline int fillInto(T* buf) const{ return p_.fillInto( idx_, buf ); }
 #ifdef RMACXX_DEBUG_EXPRS
     inline void debug()const{
         std::cout<<"@"<<(u_long)&p_;
@@ -30,7 +32,7 @@ public:
 #endif
 private:
     P const& p_;
-
+    int idx_;
 };
 
 template <typename T, class V>

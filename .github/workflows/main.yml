@@ -4,26 +4,21 @@ name: CI
 on: [push,pull_request,workflow_dispatch]
 
 jobs:
-  test:
+  # GitHub-hosted runners have no GPUs: the test-suite is built against the
+  # CPU emulation of CUDA/NVSHMEM/MPI in tests/emulator (one PE per thread).
+  emulator:
     runs-on: ubuntu-22.04
-    strategy:
-      matrix:
-        mpi: ["mpich"]
-    name: ${{ matrix.mpi }}
+    name: emulator
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
-      - name: Setup MPI
-        uses: mpi4py/setup-mpi@v1
-        with:
-          mpi: ${{ matrix.mpi }}    
-      - name: Set up Clang
-        run:  (echo "y" | sudo apt install g++-10) && sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-10 50
+        uses: actions/checkout@v4
+      - name: Set up g++
+        run:  (echo "y" | sudo apt install g++-12) && sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-12 50
       - name: Get CMake
         uses: lukka/get-cmake@latest
       - name: Run CMake
         uses: lukka/run-cmake@v10
         with:
-          configurePreset: default
-          testPreset: default
-          buildPreset: default
+          configurePreset: emulator
+          buildPreset: emulator
+          testPreset: emulator

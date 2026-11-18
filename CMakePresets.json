@@ -1,50 +1,81 @@
 {
-    "version": 3,
-    "cmakeMinimumRequired": {
-      "major": 3,
-      "minor": 8,
-      "patch": 0
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 20,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "default",
+      "displayName": "Default Config",
+      "description": "Default build using 'Unix Makefiles' generator",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build/default"
     },
-    "configurePresets": [
-      {
-        "name": "default",
-        "displayName": "Default Config",
-        "description": "Default build using 'Unix Makefiles' generator",
-        "generator": "Unix Makefiles",
-        "binaryDir": "${sourceDir}/build/default"
+    {
+      "name": "ninja-multi",
+      "inherits": "default",
+      "displayName": "Ninja Multi-Config",
+      "description": "Default build using Ninja Multi-Config generator",
+      "generator": "Makefiles"
+    },
+    {
+      "name": "windows-only",
+      "inherits": "default",
+      "displayName": "Windows-only configuration",
+      "description": "This build is only available on Windows",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "emulator",
+      "inherits": "default",
+      "displayName": "CPU emulator",
+      "description": "Tests against the CPU emulation of CUDA/NVSHMEM/MPI (no GPU needed)",
+      "binaryDir": "${sourceDir}/build/emulator-ctest",
+      "cacheVariables": {
+        "RMACXX_EMULATOR": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "default",
+      "configurePreset": "default",
+      "cleanFirst": true
+    },
+    {
+      "name": "emulator",
+      "configurePreset": "emulator",
+      "cleanFirst": true
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "default",
+      "configurePreset": "default",
+      "output": {
+        "outputOnFailure": true
       },
-      {
-        "name": "ninja-multi",
-        "inherits": "default",
-        "displayName": "Ninja Multi-Config",
-        "description": "Default build using Ninja Multi-Config generator",
-        "generator": "Makefiles"
+      "execution": {
+        "noTestsAction": "ignore",
+        "stopOnFailure": false
+      }
+    },
+    {
+      "name": "emulator",
+      "configurePreset": "emulator",
+      "output": {
+        "outputOnFailure": true
       },
-      {
-        "name": "windows-only",
-        "inherits": "default",
-        "displayName": "Windows-only configuration",
-        "description": "This build is only available on Windows",
-        "condition": {
-          "type": "equals",
-          "lhs": "${hostSystemName}",
-          "rhs": "Windows"
-        }
+      "execution": {
+        "noTestsAction": "ignore",
+        "stopOnFailure": false
       }
-    ],
-    "buildPresets": [
-      {
-        "name": "default",
-        "configurePreset": "default",
-        "cleanFirst": true
-      }
-    ],
-    "testPresets": [
-      {
-        "name": "default",
-        "configurePreset": "default",
-        "output": {"outputOnFailure": true},
-        "execution": {"noTestsAction": "ignore", "stopOnFailure": false}
-      }
-    ]
+    }
+  ]
 }

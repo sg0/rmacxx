@@ -1,4 +1,8 @@
-
+// Local view window (NVSHMEM backend)
+// -----------------------------------
+// Accesses are expressed as (target PE, coordinates in the target's local
+// n-d array). All PEs are assumed to use the same local extents.
+//
 // TODO FIXME finish coding RMACXX_USE_MPI_AINT_FOR_COORD.
 // This is for cases when input coordinates are greater
 // than INT range.
@@ -19,8 +23,6 @@ class Window<T, LOCAL_VIEW, wuse_, wcmpl_, watmc_, wtsft_>
         if ( is_expr_bulk_ ) BExpr<T, WIN>::flush();\
         flush_expr();\
     } while(0)
-    #define LW_RESERVE_EXPR() {}
-    #define LW_CLEAR_EXPR() {}
 #else
     #define LWFLUSH() do{ \
         for(auto expr:expressions_){ \
@@ -28,276 +30,164 @@ class Window<T, LOCAL_VIEW, wuse_, wcmpl_, watmc_, wtsft_>
         }                 \
         flush_expr();\
     } while(0)
-    #define LW_RESERVE_EXPR() expressions_.reserve(DEFAULT_EXPR_COUNT)
-    #define LW_CLEAR_EXPR() expressions_.clear()
 #endif
 
-    // TODO allow creation of empty windows, and define
-    // methods to populate it later
 public:
-#define LWINIT_COMMON(dims) \
-    do { \
-        MPI_Comm_rank(comm_, &commRank_); \
-        MPI_Comm_size(comm_, &commSize_); \
-        ndims_ = dims.size(); \
-        dims_.resize(ndims_); \
-        memcpy(&(*(dims_.begin())), &(*(dims.begin())), ndims_ * sizeof(int)); \
-        int nelems = 1; \
-        for (int i = 0; i < ndims_; i++) nelems *= dims_[i]; \
-        nelems_ = nelems; \
-        /* populated by operator() */ \
-        target_ = -1; \
-        disp_ = 0; \
-        fop_inp_ = nullptr; \
-        cas_inp_ = nullptr; \
-        is_fop_ = false; \
-        is_cas_ = false; \
-        winop_ = Op(); \
-        winfo_ = MPI_INFO_NULL; \
-        if (wuse_ == EXPR) \
-        { \
-            expr_past_info_1D_size_= 3*DEFAULT_EXPR_COUNT; \
-            expr_issue_counter_    = 0; \
-            expr_get_counter_      = 0; \
-            expr_getND_counter_    = 0; \
-            expr_size_counter_     = 0; \
-            expr_xfer1D_counter_   = 0; \
-            expr_xferND_counter_   = 0; \
-            expr_buf_counter_      = 0; \
-            expr_put_eval_counter_ = 0; \
-            is_expr_elem_          = false; \
-            is_expr_bulk_          = false; \
-            expr_bptr_             = nullptr; \
-            expr_info_1D_ = new int[expr_past_info_1D_size_]; \
-            defer_put_xfer_1D_.reserve(DEFAULT_EXPR_COUNT); \
-            defer_put_xfer_nD_.reserve(DEFAULT_EXPR_COUNT); \
-            LW_RESERVE_EXPR();\
-        } \
-        /* used for subarray construction for ndims > 1 */\
-        subsizes_.resize(ndims_); \
-        starts_.resize(ndims_); \
-    } while(0)
-
-
     /* Win_allocate model */
-    Window( std::vector<int> const& dims )
-    {
-        MPI_Comm_dup( MPI_COMM_WORLD, &comm_ );
-        LWINIT_COMMON( dims );
-        wkind_ = ALLOC;
-#ifdef RMACXX_USE_SAME_SIZE_INFO
-        MPI_Info_create( &winfo_ );
-        MPI_Info_set( winfo_, "same_size", "true" );
-#endif
-        T* base = nullptr;
-        MPI_Win_allocate( nelems_ * sizeof( T ),
-                          sizeof( T ), winfo_, comm_, &base, &win_ );
-        MPI_Win_lock_all( MPI_MODE_NOCHECK, win_ );
-        iswinlocked_ = true;
-    }
+    Window( std::vector<int> const& dims ) { init_( dims, nullptr ); }
 
+    /* Win_create model: the window is initialized from the user's buffer
+     * and the window contents are copied back into it by wfree(). NVSHMEM
+     * cannot make arbitrary user memory remotely accessible, so in between
+     * use wget() (device pointer) to access the local part. */
+    Window( std::vector<int> const& dims, T* winbuf ) { init_( dims, winbuf ); }
+
+#if RMACXX_USE_MPI_BOOTSTRAP
+    // communicator must be congruent with MPI_COMM_WORLD
     Window( std::vector<int> const& dims, MPI_Comm comm )
     {
-        MPI_Comm_dup( comm, &comm_ );
-        LWINIT_COMMON( dims );
-        wkind_ = ALLOC;
-#ifdef RMACXX_USE_SAME_SIZE_INFO
-        MPI_Info_create( &winfo_ );
-        MPI_Info_set( winfo_, "same_size", "true" );
-#endif
-        T* base = nullptr;
-        MPI_Win_allocate( nelems_ * sizeof( T ),
-                          sizeof( T ), winfo_, comm_, &base, &win_ );
-        MPI_Win_lock_all( MPI_MODE_NOCHECK, win_ );
-        iswinlocked_ = true;
-    }
-
-    /* Win_create model, user passes pointer-to-buffer
-     * and assumes ownership */
-    Window( std::vector<int> const& dims, T* winbuf )
-    {
-        MPI_Comm_dup( MPI_COMM_WORLD, &comm_ );
-        LWINIT_COMMON( dims );
-        wkind_ = CREATE;
-#ifdef RMACXX_USE_SAME_SIZE_INFO
-        MPI_Info_create( &winfo_ );
-        MPI_Info_set( winfo_, "same_size", "true" );
-#endif
-        MPI_Win_create( winbuf, nelems_ * sizeof( T ),
-                        sizeof( T ), MPI_INFO_NULL, comm_, &win_ );
-        MPI_Win_lock_all( MPI_MODE_NOCHECK, win_ );
-        iswinlocked_ = true;
+        detail::check_world_comm( comm );
+        init_( dims, nullptr );
     }
 
     Window( std::vector<int> const& dims, MPI_Comm comm, T* winbuf )
     {
-        MPI_Comm_dup( comm, &comm_ );
-        LWINIT_COMMON( dims );
-        wkind_ = CREATE;
-#ifdef RMACXX_USE_SAME_SIZE_INFO
-        MPI_Info_create( &winfo_ );
-        MPI_Info_set( winfo_, "same_size", "true" );
-#endif
-        MPI_Win_create( winbuf, nelems_ * sizeof( T ),
-                        sizeof( T ), MPI_INFO_NULL, comm_, &win_ );
-        MPI_Win_lock_all( MPI_MODE_NOCHECK, win_ );
-        iswinlocked_ = true;
+        detail::check_world_comm( comm );
+        init_( dims, winbuf );
     }
+#endif
 
     // user has to call wfree to deallocate
-    // resources
-    ~Window() {
-        // this->wfree();
+    // resources (collective)
+    ~Window()
+    {
 #ifndef RMACXX_USE_CLASSIC_HANDLES
-        FuturesManager<T>::instance().forget_all(expressions_);
+        FuturesManager<T>::instance().forget_all( expressions_ );
 #endif
     }
 
     void wfree()
     {
-        if ( iswinlocked_ )
-        {
-            MPI_Win_unlock_all( win_ );
-            // if user calls wunlock, then it is user's onus
-            // to call MPI_Win_free
-            MPI_Win_free( &win_ );
-            iswinlocked_ = false;
-        }
-
-#ifdef RMACXX_USE_SAME_SIZE_INFO
-        MPI_Info_free( &winfo_ );
-#endif
-        subsizes_.clear();
-        starts_.clear();
-        dims_.clear();
+        if ( !eng_.created() )
+            return;
 
         if ( wuse_ == EXPR )
         {
-            delete []expr_info_1D_;
-            defer_xfer_nD_.clear();
-            defer_put_xfer_1D_.clear();
-            defer_put_xfer_nD_.clear();
-            LW_CLEAR_EXPR();
+            xs_.clear( eng_ );
+            LW_CLEAR_EXPR_();
         }
 
+        eng_.complete();
+
+        if ( user_buf_ != nullptr )
+            eng_.d2h( user_buf_, eng_.base(), nelems_ * sizeof( T ) );
+
+        eng_.destroy();
+        iswinlocked_ = false;
+        subsizes_.clear();
+        starts_.clear();
+        dims_.clear();
         expr_bptr_ = nullptr;
-        MPI_Comm_free( &comm_ );
     }
 
     // Window attributes
-    inline MPI_Comm comm() { return comm_; }
+#if RMACXX_USE_MPI_BOOTSTRAP
+    inline MPI_Comm comm() { return MPI_COMM_WORLD; }
+#endif
+    inline nvshmem_team_t team() const { return NVSHMEM_TEAM_WORLD; }
     inline int ndims() const { return ndims_; }
     inline const std::vector<int>& dims() const { return dims_; }
-    inline void barrier() { MPI_Barrier( comm_ ); }
+    inline void barrier() { eng_.barrier(); }
     inline int size() const { return commSize_; }
     inline int rank() const { return commRank_; }
     inline WinCompletion completion() const { return wcmpl_; }
     // is my window locked?
     inline bool iswinlocked() const { return iswinlocked_; }
+    // stream used by host-initiated operations of this window
+    inline cudaStream_t stream() const { return eng_.stream(); }
 
-    // return a pointer to the window buffer
-    inline T* wget() const
+    // view for device-initiated communication (pass by value to kernels)
+    DeviceWindow<T, LOCAL_VIEW> device_view() const
     {
-        int flag = 0;
-        T* wbaseptr = nullptr;
-        MPI_Win_get_attr( win_, MPI_WIN_BASE, &wbaseptr, &flag );
-        return wbaseptr;
+        DeviceWindow<T, LOCAL_VIEW> dv;
+        dv.base = eng_.base();
+        dv.ndims = ndims_;
+
+        for ( int k = 0; k < RMACXX_MAX_DIMS; k++ )
+            dv.dims[k] = ( k < ndims_ ) ? dims_[k] : 1;
+
+        dv.nelems = nelems_;
+        dv.me = commRank_;
+        dv.npes = commSize_;
+        return dv;
     }
 
+    // return a pointer to the window buffer
+    // NOTE: this is GPU (symmetric heap) memory
+    inline T* wget() const { return eng_.base(); }
+
     // fill value in the buffer attached to the window
+    // (collective)
     inline void fill( T val ) const
     {
-        T* localBuf = wget();
-
-        for ( int i = 0; i < nelems_; i++ )
-            localBuf[i] = val;
-
-        MPI_Win_sync( win_ );
-        MPI_Barrier( comm_ );
+        eng_.complete();
+        std::vector<T> h( static_cast<size_t>( nelems_ ), val );
+        eng_.h2d( eng_.base(), h.data(), nelems_ * sizeof( T ) );
+        eng_.barrier();
     }
 
     // returns 2d if ndims == 2,
     // otherwise returns data as per flat 1d layout
     void print( std::string const& s ) const
     {
-        MPI_Barrier( comm_ );
-        T* buf = wget();
+        eng_.barrier();
+        std::vector<T> buf( static_cast<size_t>( nelems_ ) );
+        eng_.d2h( buf.data(), eng_.base(), nelems_ * sizeof( T ) );
 
         if ( commRank_ == 0 )
             std::cout << s << std::endl;
 
-        if ( ndims_ == 2 ) // 2d layout
+        for ( int p = 0; p < commSize_; p++ )
         {
-            const int m = dims_[0];
-            const int n = dims_[1];
-            const int ld = n;
+            nvshmem_barrier_all();
 
-            for ( int p = 0; p < commSize_; p++ )
+            if ( p == commRank_ )
             {
-                MPI_Barrier( comm_ );
-
-                if ( p == commRank_ )
+                if ( ndims_ == 2 ) // 2d layout
                 {
+                    const int m = dims_[0];
+                    const int n = dims_[1];
                     std::cout << "[" << p << "]" << "dims: {" << m << "," << n << "}" << std::endl;
 
                     for ( int i = 0; i < m; i++ )
                     {
                         for ( int j = 0; j < n; j++ )
-                            std::cout << " " << buf[i*ld + j] << " ";
+                            std::cout << " " << buf[i*n + j] << " ";
 
                         std::cout << std::endl;
                     }
-
-                    MPI_Barrier( comm_ );
                 }
-            }
-        }
-        else // 1d layout
-        {
-            for ( int p = 0; p < commSize_; p++ )
-            {
-                MPI_Barrier( comm_ );
-
-                if ( p == commRank_ )
+                else // 1d layout
                 {
                     std::cout << "[" << p << "]" << "dims: {" << nelems_ << "}" << std::endl;
+
                     for ( int i = 0; i < nelems_; i++ )
-                        std::cout <<  buf[i] << " ";
+                        std::cout << buf[i] << " ";
 
                     std::cout << std::endl;
                 }
 
-                MPI_Barrier( comm_ );
+                std::cout << std::flush;
             }
         }
+
+        nvshmem_barrier_all();
     }
 
-    // user unlocks window
-    // takes control
-    inline MPI_Win& wunlock()
-    {
-        if ( iswinlocked_ )
-        {
-            MPI_Win_unlock_all( win_ );
-            iswinlocked_ = false;
-        }
-
-        return win_;
-    }
-
-    // user locks window
-    // releases control
-    // by default MPI_MODE_NOCHECK
-    inline MPI_Win& wlock()
-    {
-        if ( !iswinlocked_ )
-        {
-            MPI_Win_lock_all( MPI_MODE_NOCHECK, win_ );
-            iswinlocked_ = true;
-        }
-
-        return win_;
-    }
+    // there is no lock/unlock epoch in NVSHMEM; these are kept for
+    // source compatibility and only track a flag
+    inline void wunlock() { iswinlocked_ = false; }
+    inline void wlock() { iswinlocked_ = true; }
 
     // check if window's WinCompletion is
     // default blocking
@@ -320,7 +210,7 @@ public:
     inline typename std::conditional<( wuse_==NO_EXPR ), WIN&, BExpr<T,RefBExpr<T,WIN>>>::type
     operator()( int target, std::initializer_list<int> const& lo, std::initializer_list<int> const& hi )
     { return operator()( target, lo, hi, std::conditional_t<( wuse_==NO_EXPR ), X, Y> {} ); }
-    
+
     // large offsets
     inline typename std::conditional<( wuse_==NO_EXPR ), WIN&, EExpr<T,RefEExpr<T,WIN>>>::type
     operator()( int target, std::initializer_list<int64_t> const& lo )
@@ -334,430 +224,83 @@ public:
     // --------------------
     // using X/Y tags to differentiate between
     // EXPR windows with standard ones
-    inline WIN& operator()( int target, std::initializer_list<int> const& lo, std::initializer_list<int> const&  hi, X )
+    template <typename I>
+    inline WIN& operator()( int target, std::initializer_list<I> const& lo, std::initializer_list<I> const& hi, X )
     {
         lock();
         target_ = target;
-
-        if ( ndims_ > 1 )
-        {
-            int i = 0;
-            count_dimn_ = 1;
-            auto ilo = lo.begin();
-            std::for_each( hi.begin(), hi.end(), [this, &ilo, &i] ( int hi_val )
-            {
-                subsizes_[i] = hi_val - *ilo + 1;
-                starts_[i] = *ilo;
-                count_dimn_ *= subsizes_[i];
-                i++;
-                ilo++;
-            } );
-            disp_ = 0;
-        }
-        else
-        {
-            count_dimn_ = *( hi.begin() ) - *( lo.begin() ) + 1;
-            disp_ = *( lo.begin() );
-        }
-
+        set_box_( lo, hi );
         return *this;
     }
 
-    inline WIN& operator()( int target, std::initializer_list<int> const& lo, X )
+    template <typename I>
+    inline WIN& operator()( int target, std::initializer_list<I> const& lo, X )
     {
         lock();
         target_ = target;
-
-        if ( ndims_ > 1 )
-        {
-            disp_ = 0;
-            int idx = 0;
-            std::for_each( lo.begin(), lo.end(), [this, &idx] ( int val )
-            {
-                for ( int i = ndims_-1; i >= idx+1; i-- )  val *= dims_[i];
-
-                disp_ += val;
-                idx++;
-            } );
-        }
-        else
-            disp_ = *( lo.begin() );
-
-        return *this;
-    }
-   
-    // TODO FIXME this is only syntactic sugar, does this work
-    // for all cases? if yes, also handle expression cases 
-    inline WIN& operator()( int target, std::initializer_list<int64_t> const& lo, std::initializer_list<int64_t> const&  hi, X )
-    {
-        lock();
-        target_ = target;
-
-        if ( ndims_ > 1 )
-        {
-            int i = 0;
-            count_dimn_ = 1;
-            auto ilo = lo.begin();
-            std::for_each( hi.begin(), hi.end(), [this, &ilo, &i] ( int64_t hi_val )
-            {
-                subsizes_[i] = (int)(hi_val - *ilo + 1);
-                starts_[i] = (int)*ilo;
-                count_dimn_ *= subsizes_[i];
-                i++;
-                ilo++;
-            } );
-            disp_ = 0;
-        }
-        else
-        {
-            count_dimn_ = (int)(*( hi.begin() ) - *( lo.begin() ) + 1);
-            disp_ = *( lo.begin() );
-        }
-
+        set_elem_( lo );
         return *this;
     }
 
-    inline WIN& operator()( int target, std::initializer_list<int64_t> const& lo, X )
-    {
-        lock();
-        target_ = target;
-
-        if ( ndims_ > 1 )
-        {
-            disp_ = 0;
-            int idx = 0;
-            std::for_each( lo.begin(), lo.end(), [this, &idx] ( int64_t val )
-            {
-                for ( int i = ndims_-1; i >= idx+1; i-- )  val *= dims_[i];
-
-                disp_ += val;
-                idx++;
-            } );
-        }
-        else
-            disp_ = *( lo.begin() );
-
-        return *this;
-    }
-    
-    // TODO FIXME handle large offsets
     // Window object wrapped with an
     // (element-wise/bulk) expression
     // object
     EExpr<T,RefEExpr<T,WIN>> operator()( int target, std::initializer_list<int> const& lo, Y )
     {
         lock();
-        
         is_expr_elem_ = true;
         target_ = target;
-        count_dimn_ = 1;
-
-        if ( ndims_ > 1 )
-        {
-            disp_ = 0;
-            int idx = 0;
-            std::for_each( lo.begin(), lo.end(), [this, &idx] ( int val )
-            {
-                for ( int i = ndims_-1; i >= idx+1; i-- )  val *= dims_[i];
-
-                disp_ += val;
-                idx++;
-            } );
-        }
-        else
-            disp_ = *( lo.begin() );
-
-        if ( expr_issue_counter_ >= expr_past_info_1D_size_ )
-            resize_expr_info_1D_();
-
-        expr_info_1D_[expr_issue_counter_] = target_;
-        expr_info_1D_[expr_issue_counter_+1] = 1;
-        expr_info_1D_[expr_issue_counter_+2] = disp_;
-        expr_issue_counter_ += 3;
-        
+        set_elem_( lo );
+        int idx = xs_.push( make_rec_() );
         unlock();
-        
-        return EExpr<T,RefEExpr<T,WIN>>( RefEExpr<T,WIN>( *this ) );
+        return EExpr<T,RefEExpr<T,WIN>>( RefEExpr<T,WIN>( *this, idx ) );
     }
 
-    // post outstanding gets for prior element-wise
-    // expression window access
-    void eexpr_outstanding_gets() const
+    EExpr<T,RefEExpr<T,WIN>> operator()( int target, std::initializer_list<int64_t> const& lo, Y )
     {
         lock();
-
-        if ( expr_buf_counter_ < PREALLOC_BUF_SZ )
-        {
-            if ( watmc_ == ATOMIC_PUT_GET )
-                MPI_Get_accumulate( NULL, 0, MPI_DATATYPE_NULL,
-                                    &pbuf_.buf_.buffer_[expr_buf_counter_],
-                                    1, TypeMap<T>(),
-                                    expr_info_1D_[expr_get_counter_],
-                                    expr_info_1D_[expr_get_counter_+2],
-                                    1, TypeMap<T>(), MPI_REPLACE, win_ );
-            else
-                MPI_Get( &pbuf_.buf_.buffer_[expr_buf_counter_],
-                         1, TypeMap<T>(),
-                         expr_info_1D_[expr_get_counter_],
-                         expr_info_1D_[expr_get_counter_+2],
-                         1, TypeMap<T>(), win_ );
-
-            expr_get_counter_ += 3;
-            expr_buf_counter_++;
-        }
-
+        is_expr_elem_ = true;
+        target_ = target;
+        set_elem_( lo );
+        int idx = xs_.push( make_rec_() );
         unlock();
+        return EExpr<T,RefEExpr<T,WIN>>( RefEExpr<T,WIN>( *this, idx ) );
     }
 
-    // recipe to resize expr_info_1D array which
-    // in EXPR cases stores {target, count, disp}
-    inline void resize_expr_info_1D_()
-    {
-        int new_sz = expr_issue_counter_ + ( 3*DEFAULT_EXPR_COUNT );
-        int* new_expr_info_1D = new int[new_sz];
-        memcpy( new_expr_info_1D, expr_info_1D_,
-                expr_issue_counter_*sizeof( int ) );
-        expr_past_info_1D_size_ = new_sz;
-        delete [] expr_info_1D_;
-        expr_info_1D_ = new_expr_info_1D;
-    }
-
-    BExpr<T,RefBExpr<T,WIN>> operator()( int target, std::initializer_list<int> const& lo, std::initializer_list<int> const& hi, Y )
+    template <typename I>
+    BExpr<T,RefBExpr<T,WIN>> operator()( int target, std::initializer_list<I> const& lo, std::initializer_list<I> const& hi, Y )
     {
         lock();
-
         is_expr_bulk_ = true;
         target_ = target;
-
-        if ( ndims_ > 1 )
-        {
-            count_dimn_ = 1;
-            int i = 0;
-            auto ilo = lo.begin();
-            std::for_each( hi.begin(), hi.end(), [this, &ilo, &i] ( int hi_val )
-            {
-                subsizes_[i] = hi_val - *ilo + 1;
-                starts_[i] = *ilo;
-                count_dimn_ *= subsizes_[i];
-                i++;
-                ilo++;
-            } );
-            defer_xfer_nD_.emplace_back( target_, count_dimn_,
-                                         subsizes_, starts_ );
-        }
-        else
-        {
-            count_dimn_ = *( hi.begin() ) - *( lo.begin() ) + 1;
-            disp_ = *( lo.begin() );
-
-            if ( expr_issue_counter_ >= expr_past_info_1D_size_ )
-                resize_expr_info_1D_();
-
-            expr_info_1D_[expr_issue_counter_] = target_;
-            expr_info_1D_[expr_issue_counter_+1] = count_dimn_;
-            expr_info_1D_[expr_issue_counter_+2] = disp_;
-            expr_issue_counter_ += 3;
-        }
-
+        set_box_( lo, hi );
+        int idx = xs_.push( make_rec_() );
         unlock();
-        
-        return BExpr<T,RefBExpr<T,WIN>>( RefBExpr<T,WIN>( *this ) );
+        return BExpr<T,RefBExpr<T,WIN>>( RefBExpr<T,WIN>( *this, idx ) );
     }
 
-    // post outstanding gets for prior bulk
-    // expression window access
-    void bexpr_outstanding_gets() const
+    // post outstanding gets for a prior element-wise /
+    // bulk expression window access
+    void eexpr_outstanding_gets( int idx ) const
     {
         lock();
+        xs_.issue_get( eng_, idx, watmc_ == ATOMIC_PUT_GET );
+        unlock();
+    }
 
-        // post gets if space available on buffer
-        if ( expr_buf_counter_ < PREALLOC_BUF_SZ )
-        {
-            if ( watmc_ == ATOMIC_PUT_GET )
-            {
-                if ( ndims_ == 1 )
-                {
-                    int const& count = expr_info_1D_[expr_get_counter_+1];
-
-                    if ( expr_buf_counter_ == 0 )
-                    {
-                        // for the very first time, requested data may be
-                        // greater than available preallocated buffer space
-                        if ( ( expr_buf_counter_ + count ) < PREALLOC_BUF_SZ )
-                        {
-                            MPI_Get_accumulate( NULL, 0, MPI_DATATYPE_NULL,
-                                                &pbuf_.buf_.buffer_[expr_buf_counter_],
-                                                count, TypeMap<T>(),
-                                                expr_info_1D_[expr_get_counter_],
-                                                expr_info_1D_[expr_get_counter_+2],
-                                                count, TypeMap<T>(), MPI_REPLACE, win_ );
-                            expr_get_counter_ += 3;
-                            expr_buf_counter_ += count;
-                        }
-                    }
-                    else
-                    {
-                        MPI_Get_accumulate( NULL, 0, MPI_DATATYPE_NULL,
-                                            &pbuf_.buf_.buffer_[expr_buf_counter_],
-                                            count, TypeMap<T>(),
-                                            expr_info_1D_[expr_get_counter_],
-                                            expr_info_1D_[expr_get_counter_+2],
-                                            count, TypeMap<T>(), MPI_REPLACE, win_ );
-                        expr_get_counter_ += 3;
-                        expr_buf_counter_ += count;
-                    }
-                }
-                else
-                {
-                    int const& count = defer_xfer_nD_[expr_getND_counter_].count_;
-
-                    if ( expr_buf_counter_ == 0 )
-                    {
-                        if ( ( expr_buf_counter_ + count ) < PREALLOC_BUF_SZ )
-                        {
-                            MPI_Datatype sarr_type;
-                            MPI_Type_create_subarray( ndims_, dims_.data(),
-                                                      defer_xfer_nD_[expr_getND_counter_].subsizes_.data(),
-                                                      defer_xfer_nD_[expr_getND_counter_].starts_.data(),
-                                                      MPI_ORDER_C, TypeMap<T>(), &sarr_type );
-                            MPI_Type_commit( &sarr_type );
-                            MPI_Get_accumulate( NULL, 0, MPI_DATATYPE_NULL,
-                                                &pbuf_.buf_.buffer_[expr_buf_counter_],
-                                                count, TypeMap<T>(), defer_xfer_nD_[expr_getND_counter_].target_,
-                                                /*disp*/ 0, 1, sarr_type, MPI_REPLACE, win_ );
-                            MPI_Type_free( &sarr_type );
-                            expr_buf_counter_ += count;
-                            expr_getND_counter_++;
-                        }
-                    }
-                    else
-                    {
-                        MPI_Datatype sarr_type;
-                        MPI_Type_create_subarray( ndims_, dims_.data(),
-                                                  defer_xfer_nD_[expr_getND_counter_].subsizes_.data(),
-                                                  defer_xfer_nD_[expr_getND_counter_].starts_.data(),
-                                                  MPI_ORDER_C, TypeMap<T>(), &sarr_type );
-                        MPI_Type_commit( &sarr_type );
-                        MPI_Get_accumulate( NULL, 0, MPI_DATATYPE_NULL,
-                                            &pbuf_.buf_.buffer_[expr_buf_counter_],
-                                            count, TypeMap<T>(), defer_xfer_nD_[expr_getND_counter_].target_,
-                                            /*disp*/ 0, 1, sarr_type, MPI_REPLACE, win_ );
-                        MPI_Type_free( &sarr_type );
-                        expr_buf_counter_ += count;
-                        expr_getND_counter_++;
-                    }
-                }
-            }
-            else
-            {
-                if ( ndims_ == 1 )
-                {
-                    int const& count = expr_info_1D_[expr_get_counter_+1];
-
-                    if ( expr_buf_counter_ == 0 )
-                    {
-                        if ( ( expr_buf_counter_ + count ) < PREALLOC_BUF_SZ )
-                        {
-                            MPI_Get( &pbuf_.buf_.buffer_[expr_buf_counter_],
-                                     count, TypeMap<T>(),
-                                     expr_info_1D_[expr_get_counter_],
-                                     expr_info_1D_[expr_get_counter_+2],
-                                     count, TypeMap<T>(), win_ );
-                            expr_buf_counter_ += count;
-                            expr_get_counter_ += 3;
-                        }
-                    }
-                    else
-                    {
-                        MPI_Get( &pbuf_.buf_.buffer_[expr_buf_counter_],
-                                 count, TypeMap<T>(),
-                                 expr_info_1D_[expr_get_counter_],
-                                 expr_info_1D_[expr_get_counter_+2],
-                                 count, TypeMap<T>(), win_ );
-                        expr_buf_counter_ += count;
-                        expr_get_counter_ += 3;
-                    }
-                }
-                else
-                {
-                    int const& count = defer_xfer_nD_[expr_getND_counter_].count_;
-
-                    if ( expr_buf_counter_ == 0 )
-                    {
-                        if ( ( expr_buf_counter_ + count ) < PREALLOC_BUF_SZ )
-                        {
-                            MPI_Datatype sarr_type;
-                            MPI_Type_create_subarray( ndims_, dims_.data(),
-                                                      defer_xfer_nD_[expr_getND_counter_].subsizes_.data(),
-                                                      defer_xfer_nD_[expr_getND_counter_].starts_.data(),
-                                                      MPI_ORDER_C, TypeMap<T>(), &sarr_type );
-                            MPI_Type_commit( &sarr_type );
-                            MPI_Get( &pbuf_.buf_.buffer_[expr_buf_counter_],
-                                     count, TypeMap<T>(),
-                                     defer_xfer_nD_[expr_getND_counter_].target_,/*disp*/ 0, 1,
-                                     sarr_type, win_ );
-                            MPI_Type_free( &sarr_type );
-                            expr_buf_counter_ += count;
-                            expr_getND_counter_++;
-                        }
-                    }
-                    else
-                    {
-                        MPI_Datatype sarr_type;
-                        MPI_Type_create_subarray( ndims_, dims_.data(),
-                                                  defer_xfer_nD_[expr_getND_counter_].subsizes_.data(),
-                                                  defer_xfer_nD_[expr_getND_counter_].starts_.data(),
-                                                  MPI_ORDER_C, TypeMap<T>(), &sarr_type );
-                        MPI_Type_commit( &sarr_type );
-                        MPI_Get( &pbuf_.buf_.buffer_[expr_buf_counter_],
-                                 count, TypeMap<T>(),
-                                 defer_xfer_nD_[expr_getND_counter_].target_,/*disp*/ 0, 1,
-                                 sarr_type, win_ );
-                        MPI_Type_free( &sarr_type );
-                        expr_buf_counter_ += count;
-                        expr_getND_counter_++;
-                    }
-                }
-            }
-        }
-
+    void bexpr_outstanding_gets( int idx ) const
+    {
+        lock();
+        xs_.issue_get( eng_, idx, watmc_ == ATOMIC_PUT_GET );
         unlock();
     }
 
     // ignore get, since the communication
     // params are going to be used for a put
-    inline void expr_ignore_last_get() const
+    inline void expr_ignore_last_get( int idx ) const
     {
         lock();
-        if(is_expr_elem_)
-        {
-            // counter adjustment
-            expr_issue_counter_ -= 3;
-            defer_put_xfer_1D_.emplace_back(
-                expr_info_1D_[expr_issue_counter_],
-                expr_info_1D_[expr_issue_counter_+1],
-                expr_info_1D_[expr_issue_counter_+2] );
-        }else{
-            if ( ndims_ == 1 )
-            {
-                // counter adjustment
-                expr_issue_counter_ -= 3;
-                defer_put_xfer_1D_.emplace_back(
-                    expr_info_1D_[expr_issue_counter_],
-                    expr_info_1D_[expr_issue_counter_+1],
-                    expr_info_1D_[expr_issue_counter_+2] );
-            }
-            else
-            {
-                const int idx = defer_xfer_nD_.size()-1;
-                defer_put_xfer_nD_.emplace_back( defer_xfer_nD_[idx].target_,
-                                                defer_xfer_nD_[idx].count_,
-                                                defer_xfer_nD_[idx].subsizes_,
-                                                defer_xfer_nD_[idx].starts_ );
-                defer_xfer_nD_.pop_back();
-            }
-        }
-
+        xs_.mark_dest( idx );
         unlock();
     }
 
@@ -765,184 +308,41 @@ public:
 
     // this is required for EXPR cases when there is
     // a window on the RHS to >>
-    // we only need to access the window parameters
-    // of the last window object for puts
-
-    // by default, this is locally blocking, which
-    // does not matter for NO_FLUSH situations, as
-    // the entire function will be deferred until
-    // user calls flush
-    void eexpr_outstanding_put( const T val ) const
+    // the origin is staged, so it is locally complete
+    // on return
+    void eexpr_outstanding_put( int idx, const T val ) const
     {
         lock();
-
-        printf("Is it here??");
-        if ( watmc_ == ATOMIC_PUT_GET )
-            MPI_Accumulate( &val, 1, TypeMap<T>(),
-                            defer_put_xfer_1D_[expr_put_eval_counter_].target_,
-                            defer_put_xfer_1D_[expr_put_eval_counter_].disp_,
-                            1, TypeMap<T>(), MPI_REPLACE, win_ );
-        else
-            MPI_Put( &val, 1, TypeMap<T>(),
-                     defer_put_xfer_1D_[expr_put_eval_counter_].target_,
-                     defer_put_xfer_1D_[expr_put_eval_counter_].disp_,
-                     1, TypeMap<T>(), win_ );
-
-        MPI_Win_flush_local
-        ( defer_put_xfer_1D_[expr_put_eval_counter_].target_, win_ );
-        expr_put_eval_counter_++;
-        
+        xs_.put( eng_, idx, &val, watmc_ == ATOMIC_PUT_GET );
         unlock();
     }
 
-    void bexpr_outstanding_put( const T* origin_addr ) const
+    void bexpr_outstanding_put( int idx, const T* origin_addr ) const
     {
         lock();
-        if ( watmc_ == ATOMIC_PUT_GET )
-        {
-            if ( ndims_ == 1 )
-                MPI_Accumulate( origin_addr, defer_put_xfer_1D_[expr_put_eval_counter_].count_,
-                                TypeMap<T>(), defer_put_xfer_1D_[expr_put_eval_counter_].target_,
-                                disp_, defer_put_xfer_1D_[expr_put_eval_counter_].count_,
-                                TypeMap<T>(), MPI_REPLACE, win_ );
-            else
-            {
-                MPI_Datatype sarr_type;
-                MPI_Type_create_subarray( ndims_, dims_.data(),
-                                          defer_put_xfer_nD_[expr_put_eval_counter_].subsizes_.data(),
-                                          defer_put_xfer_nD_[expr_put_eval_counter_].starts_.data(),
-                                          MPI_ORDER_C, TypeMap<T>(), &sarr_type );
-                MPI_Type_commit( &sarr_type );
-                MPI_Accumulate( origin_addr, defer_put_xfer_nD_[expr_put_eval_counter_].count_,
-                                TypeMap<T>(), defer_put_xfer_nD_[expr_put_eval_counter_].target_,
-                                /*disp*/ 0, 1, sarr_type, MPI_REPLACE, win_ );
-                MPI_Type_free( &sarr_type );
-            }
-
-            MPI_Win_flush_local
-            ( defer_put_xfer_1D_[expr_put_eval_counter_].target_, win_ );
-        }
-        else
-        {
-            if ( ndims_ == 1 )
-            {
-                MPI_Put( origin_addr, defer_put_xfer_1D_[expr_put_eval_counter_].count_,
-                         TypeMap<T>(), defer_put_xfer_1D_[expr_put_eval_counter_].target_,
-                         defer_put_xfer_1D_[expr_put_eval_counter_].disp_,
-                         defer_put_xfer_1D_[expr_put_eval_counter_].count_,
-                         TypeMap<T>(), win_ );
-                MPI_Win_flush_local
-                ( defer_put_xfer_1D_[expr_put_eval_counter_].target_, win_ );
-            }
-            else
-            {
-                MPI_Datatype sarr_type;
-                // Todo: this call is failing a lot, and
-                // It seems to have to do with expr_ignore_last_get
-                MPI_Type_create_subarray( ndims_, dims_.data(),
-                                          defer_put_xfer_nD_[expr_put_eval_counter_].subsizes_.data(),
-                                          defer_put_xfer_nD_[expr_put_eval_counter_].starts_.data(),
-                                          MPI_ORDER_C, TypeMap<T>(), &sarr_type );
-                MPI_Type_commit( &sarr_type );
-                MPI_Put( origin_addr, defer_put_xfer_nD_[expr_put_eval_counter_].count_,
-                         TypeMap<T>(), defer_put_xfer_nD_[expr_put_eval_counter_].target_,
-                         /*disp*/ 0, 1, sarr_type, win_ );
-                MPI_Type_free( &sarr_type );
-                MPI_Win_flush_local
-                ( defer_put_xfer_nD_[expr_put_eval_counter_].target_, win_ );
-            }
-        }
-
-        expr_put_eval_counter_++;
-        
+        xs_.put( eng_, idx, origin_addr, watmc_ == ATOMIC_PUT_GET );
         unlock();
     }
 
     // for acc
     // -------
-    inline WIN& operator()( int target, std::initializer_list<int> const& lo, std::initializer_list<int> const& hi, Op op )
+    template <typename I>
+    inline WIN& operator()( int target, std::initializer_list<I> const& lo, std::initializer_list<I> const& hi, Op op )
     {
         lock();
-        
         target_ = target;
         winop_ = op;
-
-        if ( ndims_ > 1 )
-        {
-            count_dimn_ = 1;
-            int i = 0;
-            auto ilo = lo.begin();
-            std::for_each( hi.begin(), hi.end(), [this, &ilo, &i] ( int hi_val )
-            {
-                subsizes_[i] = hi_val - *ilo + 1;
-                starts_[i] = *ilo;
-                count_dimn_ *= subsizes_[i];
-                i++;
-                ilo++;
-            } );
-            disp_ = 0;
-        }
-        else
-        {
-            count_dimn_ = *( hi.begin() ) - *( lo.begin() ) + 1;
-            disp_ = *( lo.begin() );
-        }
-
+        set_box_( lo, hi );
         return *this;
     }
 
-    // TODO FIXME handle large offsets for all operations
-    // wrap the input std::init_list into Lo/Hi classes like before
-    // that can accept either int or int64_t in compile time, to
-    // avoid such duplication of code
-    
-    inline WIN& operator()( int target, std::initializer_list<int> const& lo, Op op )
+    template <typename I>
+    inline WIN& operator()( int target, std::initializer_list<I> const& lo, Op op )
     {
         lock();
-        
         target_ = target;
         winop_ = op;
-
-        if ( ndims_ > 1 )
-        {
-            disp_ = 0;
-            int idx = 0;
-            std::for_each( lo.begin(), lo.end(), [this, &idx] ( int val )
-            {
-                for ( int i = ndims_-1; i >= idx+1; i-- )  val *= dims_[i];
-
-                disp_ += val;
-                idx++;
-            } );
-        }
-        else
-            disp_ = *( lo.begin() );
-
-        return *this;
-    }
- 
-    inline WIN& operator()( int target, std::initializer_list<int64_t> const& lo, Op op )
-    {
-        lock();
-        
-        target_ = target;
-        winop_ = op;
-
-        if ( ndims_ > 1 )
-        {
-            disp_ = 0;
-            int idx = 0;
-            std::for_each( lo.begin(), lo.end(), [this, &idx] ( int64_t val )
-            {
-                for ( int i = ndims_-1; i >= idx+1; i-- )  val *= dims_[i];
-
-                disp_ += val;
-                idx++;
-            } );
-        }
-        else
-            disp_ = *( lo.begin() );
-
+        set_elem_( lo );
         return *this;
     }
 
@@ -951,33 +351,11 @@ public:
     inline WIN& operator()( int target, std::initializer_list<int> const& lo, std::initializer_list<int> const& hi, Op op, T const* inpval )
     {
         lock();
-        
         target_ = target;
         winop_ = op;
         is_fop_ = true;
-        fop_inp_ = const_cast<T*>( inpval );
-
-        if ( ndims_ > 1 )
-        {
-            count_dimn_ = 1;
-            int i = 0;
-            auto ilo = lo.begin();
-            std::for_each( hi.begin(), hi.end(), [this, &ilo, &i] ( int hi_val )
-            {
-                subsizes_[i] = hi_val - *ilo + 1;
-                starts_[i] = *ilo;
-                count_dimn_ *= subsizes_[i];
-                i++;
-                ilo++;
-            } );
-            disp_ = 0;
-        }
-        else
-        {
-            count_dimn_ = *( hi.begin() ) - *( lo.begin() ) + 1;
-            disp_ = *( lo.begin() );
-        }
-
+        fop_inp_ = inpval;
+        set_box_( lo, hi );
         return *this;
     }
 
@@ -986,27 +364,12 @@ public:
     inline WIN& operator()( int target, std::initializer_list<int> const& lo, Op op, T inpval )
     {
         lock();
-        
         target_ = target;
         winop_ = op;
-        fop_inp_ = &inpval;
+        fop_val_ = inpval;
+        fop_inp_ = &fop_val_;
         is_fop_ = true;
-
-        if ( ndims_ > 1 )
-        {
-            disp_ = 0;
-            int idx = 0;
-            std::for_each( lo.begin(), lo.end(), [this, &idx] ( int val )
-            {
-                for ( int i = ndims_-1; i >= idx+1; i-- )  val *= dims_[i];
-
-                disp_ += val;
-                idx++;
-            } );
-        }
-        else
-            disp_ = *( lo.begin() );
-
+        set_elem_( lo );
         return *this;
     }
 
@@ -1015,186 +378,37 @@ public:
     inline WIN& operator()( int target, std::initializer_list<int> const& lo, const T inpval, const T cmpval )
     {
         lock();
-        
         target_ = target;
-        fop_inp_ = const_cast<T*>(&inpval);
-        cas_inp_ = const_cast<T*>(&cmpval);
+        fop_val_ = inpval;
+        cas_val_ = cmpval;
         is_cas_ = true;
-
-        if ( ndims_ > 1 )
-        {
-            disp_ = 0;
-            int idx = 0;
-            std::for_each( lo.begin(), lo.end(), [this, &idx] ( int val )
-            {
-                for ( int i = ndims_-1; i >= idx+1; i-- )  val *= dims_[i];
-
-                disp_ += val;
-                idx++;
-            } );
-        }
-        else
-            disp_ = *( lo.begin() );
-
+        set_elem_( lo );
         return *this;
     }
 
-    // pushes+completes
-    // any pending deferred gets
-    T eval() const
+    // evaluate (complete) an element-wise expression access
+    T eval( int idx ) const
     {
-        // TODO: This only works on numeric types. Custom types would fail to compile
-        T val = T( 0 );
-        
         lock();
-        
-        int& target = expr_info_1D_[expr_xfer1D_counter_];
-        if ( expr_size_counter_ < PREALLOC_BUF_SZ )
-        {
-            flush_local( target );
-            // this position is flushed, and could be reused
-            // encoding the index to preallocated buffer such
-            // that it is easier to index later
-            // this will not work for the very first position (0)
-            target = ( -1 )*expr_size_counter_;
-            val = pbuf_.buf_.buffer_[expr_size_counter_];
-        }
-        else // issue+complete pending gets
-        {
-            if ( watmc_ == ATOMIC_PUT_GET )
-                MPI_Get_accumulate( NULL, 0, MPI_DATATYPE_NULL, &val,
-                                    1, TypeMap<T>(), target,
-                                    expr_info_1D_[expr_xfer1D_counter_+2],
-                                    1, TypeMap<T>(), MPI_REPLACE, win_ );
-            else
-                MPI_Get( &val, 1, TypeMap<T>(), target,
-                         expr_info_1D_[expr_xfer1D_counter_+2],
-                         1, TypeMap<T>(), win_ );
-
-            flush_local( target );
-        }
-
-        expr_size_counter_++;
-        expr_xfer1D_counter_ += 3;
-        
+        T val = xs_.eval( eng_, idx, watmc_ == ATOMIC_PUT_GET );
         unlock();
-        
         return val;
     }
 
     // return the last count
     inline int get_count() const { return count_dimn_; }
+    inline int get_count( int idx ) const { return static_cast<int>( xs_.count( idx ) ); }
 
     // bulk expression evaluation
     // returns the count of elements processed in get
-    int fillInto( T* buf ) const
+    int fillInto( int idx, T* buf ) const
     {
-        int count = 0;
         lock();
-
-        if ( ndims_ > 1 )
-        {
-            // check if preallocated buffer was used in a previously
-            // issued get
-            count = defer_xfer_nD_[expr_xferND_counter_].count_;
-
-            if ( expr_size_counter_ == 0 && ( ( expr_size_counter_ + count ) < PREALLOC_BUF_SZ ) )
-            {
-                // flush on MPI_PROC_NULL throws an error, so trying to prevent it
-                flush_local( defer_xfer_nD_[expr_xferND_counter_].target_ );
-                memcpy( buf, &pbuf_.buf_.buffer_[expr_size_counter_], sizeof( T )*count );
-                expr_size_counter_ += count;
-            }
-            else if ( expr_size_counter_ < PREALLOC_BUF_SZ )
-            {
-                flush_local( defer_xfer_nD_[expr_xferND_counter_].target_ );
-                defer_xfer_nD_[expr_xferND_counter_].target_ = ( -1 )*expr_size_counter_;
-                memcpy( buf, &pbuf_.buf_.buffer_[expr_size_counter_], sizeof( T )*count );
-                expr_size_counter_ += count;
-            }
-            else // issue+complete gets
-            {
-                int const& target = defer_xfer_nD_[expr_xferND_counter_].target_;
-                MPI_Datatype sarr_type;
-                MPI_Type_create_subarray( ndims_, dims_.data(),
-                                          defer_xfer_nD_[expr_xferND_counter_].subsizes_.data(),
-                                          defer_xfer_nD_[expr_xferND_counter_].starts_.data(),
-                                          MPI_ORDER_C, TypeMap<T>(), &sarr_type );
-                MPI_Type_commit( &sarr_type );
-
-                if ( watmc_ == ATOMIC_PUT_GET )
-                {
-                    MPI_Get_accumulate( NULL, 0, MPI_DATATYPE_NULL, buf,
-                                        count, TypeMap<T>(), target,/*disp*/ 0, 1,
-                                        sarr_type, MPI_REPLACE, win_ );
-                }
-                else
-                {
-                    MPI_Get( buf, count, TypeMap<T>(),
-                             target, /*disp*/ 0, 1, sarr_type, win_ );
-                }
-
-                MPI_Type_free( &sarr_type );
-                flush_local( target );
-            }
-
-            expr_xferND_counter_++;
-        } // end of ndims > 1
-        else // ndims == 1
-        {
-            // check if preallocated buffer was used in a previously
-            // issued get
-            count = expr_info_1D_[expr_xfer1D_counter_+1];
-
-            if ( expr_size_counter_ == 0 && ( ( expr_size_counter_ + count ) < PREALLOC_BUF_SZ ) )
-            {
-                flush_local( expr_info_1D_[expr_xfer1D_counter_] );
-                memcpy( buf, &pbuf_.buf_.buffer_[expr_size_counter_], sizeof( T )*count );
-                expr_size_counter_ += count;
-            }
-            else if ( expr_size_counter_ < PREALLOC_BUF_SZ )
-            {
-                flush_local( expr_info_1D_[expr_xfer1D_counter_] );
-                expr_info_1D_[expr_xfer1D_counter_] = ( -1 )*expr_size_counter_;
-                memcpy( buf, &pbuf_.buf_.buffer_[expr_size_counter_], sizeof( T )*count );
-                expr_size_counter_ += count;
-            }
-            else // issue+complete gets
-            {
-                int const& target = expr_info_1D_[expr_xfer1D_counter_];
-
-                if ( watmc_ == ATOMIC_PUT_GET )
-                {
-                    MPI_Get_accumulate( NULL, 0, MPI_DATATYPE_NULL, buf,
-                                        count, TypeMap<T>(), target,
-                                        expr_info_1D_[expr_xfer1D_counter_+2],
-                                        count, TypeMap<T>(), MPI_REPLACE, win_ );
-                }
-                else
-                {
-                    MPI_Get( buf, count, TypeMap<T>(), target,
-                             expr_info_1D_[expr_xfer1D_counter_+2],
-                             count, TypeMap<T>(), win_ );
-                }
-
-                flush_local( target );
-            }
-
-            expr_xfer1D_counter_ += 3;
-        } // end of ndims == 1
-
-        // std::cout<<"filled_into_win(This should probs only happen once?)"<<std::endl;
+        int count = static_cast<int>( xs_.fill_into( eng_, idx, buf, watmc_ == ATOMIC_PUT_GET ) );
         expr_bptr_ = buf;
-        
         unlock();
-        
         return count;
     }
-
-    // This is suspected to be the cause of the odd operation bug
-    // // for bulk expression
-    // inline T operator()( int idx ) const { return expr_bptr_[idx]; }
-    // inline T& operator()( int idx ) { return expr_bptr_[idx]; }
 
     // clear all the metadata corresponding
     // to expressions...this is called inside
@@ -1202,142 +416,103 @@ public:
     // to that point
     void flush_expr() const
     {
-        defer_xfer_nD_.clear();
-        defer_put_xfer_nD_.clear();
-        defer_put_xfer_1D_.clear();
-        LW_CLEAR_EXPR();
-        expr_get_counter_       = 0;
-        expr_getND_counter_     = 0;
-        expr_xfer1D_counter_    = 0;
-        expr_xferND_counter_    = 0;
-        expr_size_counter_      = 0;
-        expr_buf_counter_       = 0;
-        expr_put_eval_counter_  = 0;
-        expr_issue_counter_     = 0;
-        expr_past_info_1D_size_ = ( 3*DEFAULT_EXPR_COUNT );
-        expr_bptr_              = nullptr;
-        is_expr_elem_           = false;
-        is_expr_bulk_           = false;
+#ifndef RMACXX_USE_CLASSIC_HANDLES
+        // deferred (futures) expressions that also depend on other, not
+        // yet flushed windows still need this window's records
+        for ( auto e : expressions_ )
+            if ( FuturesManager<T>::instance().is_alive( e ) )
+                return;
+#endif
+        if ( wuse_ == EXPR )
+            xs_.clear( eng_ );
+
+        LW_CLEAR_EXPR_();
+        expr_bptr_   = nullptr;
+        is_expr_elem_ = false;
+        is_expr_bulk_ = false;
     }
 
     // operators overloading for standard
     // put/get
     // overload istream op for bulk `put/acc
     // -------------------------------------
-    void operator <<( const T* origin_addr ) //HERE
+    void operator <<( const T* origin_addr )
     {
-        if ( winop_.op == MPI_OP_NULL )
-            RMACXX_BULK_PUT( origin_addr );
-        else
-            RMACXX_BULK_ACC( origin_addr );
+        detail::HostLayout lay = packed_layout_();
+        put_or_acc_( lay, origin_addr );
     }
 
     // overloading ostream op for bulk `get
     // ------------------------------------
     void operator >>( T* origin_addr )
     {
-        if ( is_fop_ )
-            RMACXX_BULK_GACC( origin_addr );
-        else
-            RMACXX_BULK_GET( origin_addr );
+        detail::HostLayout lay = packed_layout_();
+        get_or_gacc_( lay, origin_addr );
     }
 
     // operator overloading for put/get
-    // with user-defined types
+    // with user-defined (strided) origin buffers
     // NC stands for non-contiguous
-    // TODO FIXME although Subarray_t only makes sense 
+    // TODO FIXME although Subarray_t only makes sense
     // for bulk cases, if someone uses elementwise
     // interface on the LHS, the compiler will not flag
     // it as an error currently, fix that
 
     // overload istream op for bulk noncontiguous `put/acc
     // ---------------------------------------------------
-    void operator <<( RMACXX_Subarray_t<T, LOCAL_VIEW>& origin ) //HERE
+    void operator <<( RMACXX_Subarray_t<T, LOCAL_VIEW>& origin )
     {
-        if ( winop_.op == MPI_OP_NULL )
-            RMACXX_BULK_PUT_NC( origin );
-        else
-            RMACXX_BULK_ACC_NC( origin );
+        detail::HostLayout lay = subarray_layout_( origin );
+        put_or_acc_( lay, origin.ptr_ );
     }
-
-    // TODO FIXME we rely on the user to *not* use
-    // RMACXX_Subarray_t with elementwise operations.
-    // At present, no compile time error is thrown,
-    // is there a way to fix it?
 
     // overloading ostream op for bulk noncontiguous `get
     // --------------------------------------------------
     void operator >>( RMACXX_Subarray_t<T, LOCAL_VIEW>& origin )
     {
-        if ( is_fop_ )
-            RMACXX_BULK_GACC_NC( origin );
-        else
-            RMACXX_BULK_GET_NC( origin );
+        detail::HostLayout lay = subarray_layout_( origin );
+        get_or_gacc_( lay, origin.ptr_ );
     }
 
     // overload istream op for element-wise `put/acc
     // ---------------------------------------------
     void operator <<( const T val )
     {
-        if ( winop_.op == MPI_OP_NULL )
-            RMACXX_ELEM_PUT( val );
-        else
-            RMACXX_ELEM_ACC( val );
+        detail::HostLayout lay = detail::HostLayout::packed1( 1 );
+        put_or_acc_( lay, &val );
     }
 
     // overloading ostream op for element-wise `get
-    // OR fetch-and-op
+    // OR fetch-and-op OR compare-and-swap
     // --------------------------------------------
     void operator >>( T& val )
     {
-        if ( is_fop_ )
-#ifdef RMACXX_USE_MPI_FOP_TO_IMPL_FOP
-            RMACXX_FOP_ALT( val );
-#else
-            RMACXX_FOP( val );
-#endif
-        else if ( is_cas_ )
-            RMACXX_CAS( val );
+        detail::HostLayout lay = detail::HostLayout::packed1( 1 );
+
+        if ( is_cas_ )
+        {
+            std::vector<detail::PatchDesc> pieces = pieces_();
+            val = cas_val_; // compare value, replaced by the result
+            eng_.issue( pieces, lay, detail::Xfer::CAS, OpKind::NONE, &val, &val, &fop_val_, true );
+            is_cas_ = false;
+            unlock();
+        }
         else
-            RMACXX_ELEM_GET( val );
+            get_or_gacc_( lay, &val );
     }
 
     // synchronization
-    inline void flush_local( int const& target ) const
-    {
-#ifdef TEST_OVERHEAD
-#else
-        MPI_Win_flush_local( target, win_ );
-#endif
-    }
-    inline void flush( int const& target ) const
-    {
-#ifdef TEST_OVERHEAD
-#else
-        MPI_Win_flush( target, win_ );
-#endif
-    }
-    // for flushing outstanding put for EXPR cases when window
-    // is in RHS to >>
-    inline void sync() const { MPI_Win_sync( win_ ); }
+    // NVSHMEM has no per-target completion: these complete everything
+    inline void flush_local( int const& target ) const { (void)target; eng_.complete_local(); }
+    inline void flush( int const& target ) const { (void)target; eng_.complete(); }
+    // make host-API updates of the local window visible
+    inline void sync() const { RMACXX_CUDA_CHECK( cudaStreamSynchronize( eng_.stream() ) ); }
 
     inline void flush() const { flush( std::conditional_t<( wuse_==NO_EXPR ), X, Y> {} ); }
     inline void flush_local() const { flush_local( std::conditional_t<( wuse_==NO_EXPR ), X, Y> {} ); }
 
-    inline void flush( X ) const
-    {
-#ifdef TEST_OVERHEAD
-#else
-        MPI_Win_flush_all( win_ );
-#endif
-    }
-    inline void flush_local( X ) const
-    {
-#ifdef TEST_OVERHEAD
-#else
-        MPI_Win_flush_local_all( win_ );
-#endif
-    }
+    inline void flush( X ) const { eng_.complete(); }
+    inline void flush_local( X ) const { eng_.complete_local(); }
 
     // users would call flush when there is window
     // in the RHS, when the window is created with either
@@ -1351,6 +526,8 @@ public:
         {
             LWFLUSH();
         }
+
+        eng_.complete();
     }
 
 #ifndef RMACXX_USE_CLASSIC_HANDLES
@@ -1362,20 +539,8 @@ public:
 
     // this is to make it easy to just call flush_all
     // from the expression classes
-    inline void flush_win() const
-    {
-#ifdef TEST_OVERHEAD
-#else
-        MPI_Win_flush_all( win_ );
-#endif
-    }
-    inline void flush_win_local() const
-    {
-#ifdef TEST_OVERHEAD
-#else
-        MPI_Win_flush_local_all( win_ );
-#endif
-    }
+    inline void flush_win() const { eng_.complete(); }
+    inline void flush_win_local() const { eng_.complete_local(); }
 
     inline void flush_local( Y ) const
     {
@@ -1383,6 +548,8 @@ public:
         {
             LWFLUSH();
         }
+
+        eng_.complete_local();
     }
 
     // thwart attempts to copy objects
@@ -1391,85 +558,246 @@ public:
     Window& operator=( const Window& other ) = delete;
 
 private:
-    // buffer for temporary storage,
-    // only used for EXPR cases
-    struct Buffer_t { std::array<T, PREALLOC_BUF_SZ> buffer_; };
-    struct Buffer
-    { typename std::conditional<wuse_==EXPR, Buffer_t, X>::type buf_; };
-
-    struct ExprDefer_nD
+    void init_( std::vector<int> const& dims, T* winbuf )
     {
-        int target_, count_;
-        std::vector<int> subsizes_;
-        std::vector<int> starts_;
+        detail::ensure_init();
 
-        ExprDefer_nD( int target, int count,
-                      std::vector<int> subsizes,
-                      std::vector<int> starts
-                    ):
-            target_( target ), count_( count ),
-            subsizes_( subsizes ), starts_( starts )
-        {}
-    };
+        if ( dims.empty() || dims.size() > RMACXX_MAX_DIMS )
+            RMACXX_FATAL( "window dimensionality must be in [1, RMACXX_MAX_DIMS]" );
 
-    // for issuing puts, case when window
-    // is at the RHS of an expression
-    struct ExprDeferPut_1D
+        ndims_ = static_cast<int>( dims.size() );
+        dims_ = dims;
+        nelems_ = 1;
+
+        for ( int d : dims_ )
+            nelems_ *= d;
+
+        eng_.create( nelems_ );
+        commRank_ = eng_.me();
+        commSize_ = eng_.npes();
+        user_buf_ = winbuf;
+
+        if ( winbuf != nullptr )
+            eng_.h2d( eng_.base(), winbuf, nelems_ * sizeof( T ) );
+
+        target_ = -1;
+        disp_ = 0;
+        count_dimn_ = 0;
+        elem_access_ = true;
+        fop_inp_ = nullptr;
+        is_fop_ = false;
+        is_cas_ = false;
+        winop_ = Op();
+        is_expr_elem_ = false;
+        is_expr_bulk_ = false;
+        expr_bptr_ = nullptr;
+
+        if ( wuse_ == EXPR )
+        {
+            xs_.init( eng_ );
+            LW_RESERVE_EXPR_();
+        }
+
+        subsizes_.resize( ndims_ );
+        starts_.resize( ndims_ );
+        iswinlocked_ = true;
+        eng_.barrier();
+    }
+
+#ifdef RMACXX_USE_CLASSIC_HANDLES
+    void LW_RESERVE_EXPR_() const {}
+    void LW_CLEAR_EXPR_() const {}
+#else
+    void LW_RESERVE_EXPR_() const { expressions_.reserve( DEFAULT_EXPR_COUNT ); }
+    void LW_CLEAR_EXPR_() const { expressions_.clear(); }
+#endif
+
+    // element access: linear displacement in the target's array
+    template <typename I>
+    void set_elem_( std::initializer_list<I> const& lo )
     {
-        int target_, count_;
-        MPI_Aint disp_;
+        elem_access_ = true;
+        count_dimn_ = 1;
 
-        ExprDeferPut_1D( int target, int count, MPI_Aint disp ):
-            target_( target ), count_( count ), disp_( disp )
-        {}
+        if ( ndims_ > 1 && lo.size() > 1 )
+        {
+            disp_ = 0;
+            int idx = 0;
 
-        ExprDeferPut_1D( int target, MPI_Aint disp ):
-            target_( target ), count_( 1 ), disp_( disp )
-        {}
-    };
+            for ( I val : lo )
+            {
+                int64_t v = val;
+                for ( int i = ndims_-1; i >= idx+1; i-- ) v *= dims_[i];
+                disp_ += v;
+                idx++;
+            }
+        }
+        else
+            disp_ = *( lo.begin() );
+    }
 
-    struct ExprDeferPut_nD
+    // bulk access: box [lo, hi]
+    template <typename I>
+    void set_box_( std::initializer_list<I> const& lo, std::initializer_list<I> const& hi )
     {
-        int target_, count_;
-        std::vector<int> subsizes_;
-        std::vector<int> starts_;
+        elem_access_ = false;
 
-        ExprDeferPut_nD( int target, int count,
-                         std::vector<int> subsizes,
-                         std::vector<int> starts
-                       ):
-            target_( target ), count_( count ),
-            subsizes_( subsizes ), starts_( starts )
-        {}
-    };
+        if ( ndims_ > 1 )
+        {
+            if ( lo.size() != static_cast<size_t>( ndims_ ) || hi.size() != static_cast<size_t>( ndims_ ) )
+                RMACXX_FATAL( "number of coordinates does not match window dimensionality" );
+
+            int i = 0;
+            count_dimn_ = 1;
+            auto ilo = lo.begin();
+
+            for ( I hi_val : hi )
+            {
+                subsizes_[i] = static_cast<int>( hi_val - *ilo + 1 );
+                starts_[i] = static_cast<int>( *ilo );
+                count_dimn_ *= subsizes_[i];
+                i++;
+                ilo++;
+            }
+
+            disp_ = 0;
+        }
+        else
+        {
+            count_dimn_ = static_cast<int>( *( hi.begin() ) - *( lo.begin() ) + 1 );
+            disp_ = *( lo.begin() );
+        }
+    }
+
+    // descriptor for the current access
+    std::vector<detail::PatchDesc> pieces_() const
+    {
+        std::vector<detail::PatchDesc> v( 1 );
+
+        if ( ndims_ > 1 && !elem_access_ )
+            v[0] = detail::make_box_desc( target_, ndims_, dims_.data(), starts_.data(), subsizes_.data() );
+        else
+            v[0] = detail::make_linear_desc( target_, disp_, elem_access_ ? 1 : count_dimn_, nelems_ );
+
+        return v;
+    }
+
+    detail::HostLayout packed_layout_() const
+    {
+        if ( ndims_ > 1 && !elem_access_ )
+            return detail::HostLayout::packed( ndims_, subsizes_.data() );
+
+        return detail::HostLayout::packed1( elem_access_ ? 1 : count_dimn_ );
+    }
+
+    detail::HostLayout subarray_layout_( RMACXX_Subarray_t<T, LOCAL_VIEW> const& origin ) const
+    {
+        detail::HostLayout lay = packed_layout_();
+
+        if ( lay.nd > 1 )
+        {
+            if ( origin.sizes_.size() != static_cast<size_t>( lay.nd ) || origin.starts_.size() != static_cast<size_t>( lay.nd ) )
+                RMACXX_FATAL( "RMACXX_Subarray_t: starts/sizes must match window dimensionality" );
+
+            for ( int k = 0; k < lay.nd; k++ )
+            {
+                lay.odims[k] = origin.sizes_[k];
+                lay.ostart[k] = origin.starts_[k];
+            }
+        }
+        else
+        {
+            // 1D: the patch starts at starts_[0] of the origin buffer; as in
+            // the MPI version, sizes_ is not used to bound the buffer
+            lay.ostart[0] = origin.starts_.empty() ? 0 : origin.starts_[0];
+            lay.odims[0] = lay.ostart[0] + lay.ext[0];
+        }
+
+        return lay;
+    }
+
+    detail::ExprRec make_rec_() const
+    {
+        detail::ExprRec r;
+        r.pieces = pieces_();
+        r.lay = packed_layout_();
+        r.count = r.lay.count();
+        return r;
+    }
+
+    void finish_op_()
+    {
+        if ( wcmpl_ == REMOTE_FLUSH )
+            eng_.complete();
+        else if ( wcmpl_ == LOCAL_FLUSH )
+            eng_.complete_local();
+    }
+
+    void put_or_acc_( detail::HostLayout const& lay, const T* origin )
+    {
+        std::vector<detail::PatchDesc> pieces = pieces_();
+
+        if ( winop_.op == OpKind::NONE )
+            eng_.issue( pieces, lay, ( watmc_ == ATOMIC_PUT_GET ) ? detail::Xfer::APUT : detail::Xfer::PUT,
+                        OpKind::NONE, origin, nullptr, nullptr, false );
+        else
+        {
+            eng_.issue( pieces, lay, detail::Xfer::ACC, winop_.op, origin, nullptr, nullptr, false );
+            winop_ = Op();
+        }
+
+        finish_op_();
+        unlock();
+    }
+
+    void get_or_gacc_( detail::HostLayout const& lay, T* origin )
+    {
+        std::vector<detail::PatchDesc> pieces = pieces_();
+
+        if ( is_fop_ )
+        {
+            // the operand buffer is always contiguous (as in MPI_Get_accumulate
+            // with a count of basic elements), the result may be strided
+            detail::HostLayout oplay = packed_layout_();
+            eng_.issue( pieces, lay, detail::Xfer::GACC, winop_.op, nullptr, origin, fop_inp_, false, &oplay );
+            is_fop_ = false;
+            winop_ = Op();
+        }
+        else
+            eng_.issue( pieces, lay, ( watmc_ == ATOMIC_PUT_GET ) ? detail::Xfer::AGET : detail::Xfer::GET,
+                        OpKind::NONE, nullptr, origin, nullptr, false );
+
+        finish_op_();
+        unlock();
+    }
 
     // ------------------- //
 
-    MPI_Comm comm_;
-    int commRank_;
-    int commSize_;
+    mutable detail::Engine<T> eng_;
+    mutable detail::ExprState<T> xs_;
 
-    mutable MPI_Win win_;
-    bool iswinlocked_;
-    // Win kind, win_create or win_alloc'd
-    WinKind wkind_;
+    int commRank_ = 0;
+    int commSize_ = 0;
+
+    bool iswinlocked_ = false;
     Op winop_;
-    MPI_Info winfo_;
+    T* user_buf_ = nullptr;
 
-    int ndims_;
+    int ndims_ = 0;
     std::vector<int> dims_;
-    int nelems_;
+    int64_t nelems_ = 0;
 
     mutable int target_;
     // target displacement for element-wise
     // operations, calculated directly
     // from operator()
-    mutable MPI_Aint disp_;
+    mutable int64_t disp_;
+    mutable bool elem_access_;
 
-    // stores various pointers
-    // associated with CAS/FOP
-    T* fop_inp_;
-    T* cas_inp_;
+    // values/pointers associated with CAS/FOP
+    const T* fop_inp_;
+    T fop_val_{};
+    T cas_val_{};
     bool is_fop_, is_cas_;
 
 #ifndef RMACXX_USE_CLASSIC_HANDLES
@@ -1479,35 +807,9 @@ private:
     mutable std::vector<int> starts_;
     mutable int count_dimn_;
 
-    // counters to track issue/evaluation
-    mutable int expr_size_counter_,
-            expr_past_info_1D_size_,
-            expr_issue_counter_,
-            expr_get_counter_,
-            expr_getND_counter_,
-            expr_xfer1D_counter_,
-            expr_xferND_counter_,
-            expr_buf_counter_,
-            expr_put_eval_counter_;
-
-    // store issued counts for window objects
-    // used in expressions
-
-    // for storing {target,count,disp} for 1D
-    // EXPR cases
-    // allocated to (3*DEFAULT_EXPR_COUNT), and
-    // resized as needed
-    mutable int* expr_info_1D_;
-    mutable std::vector<ExprDefer_nD> defer_xfer_nD_;
-    mutable std::vector<ExprDeferPut_1D> defer_put_xfer_1D_;
-    mutable std::vector<ExprDeferPut_nD> defer_put_xfer_nD_;
-
     mutable bool is_expr_elem_, is_expr_bulk_;
-
-    // statically allocated buffer of default
-    // size per window
-    mutable Buffer pbuf_;
     mutable T* expr_bptr_;
+
     // locks for protecting multithreaded
     // accesses to window
 #ifdef RMACXX_USE_SPINLOCK
@@ -1526,9 +828,8 @@ private:
     }
 #else
     // mutex to lock window
-    mutable std::mutex win_mtx_;
+    mutable std::recursive_mutex win_mtx_;
     void lock() const { if ( wtsft_ == CONCURRENT ) win_mtx_.lock(); }
     void unlock() const { if ( wtsft_ == CONCURRENT ) win_mtx_.unlock(); }
 #endif
 }; // class Window<T,LOCAL_VIEW,...>
-

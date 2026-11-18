@@ -7,9 +7,11 @@ template <typename T, class WIN>
 class RefEExpr
 {
 public:
-    RefEExpr( WIN const& win ) : win_( win ) {}
+    // idx_ identifies this particular window access within the
+    // window's pending expression records
+    RefEExpr( WIN const& win, int idx ) : win_( win ), idx_( idx ) {}
 
-   inline T eval() const { return win_.eval(); }
+   inline T eval() const { return win_.eval( idx_ ); }
     inline bool is_win_b() const { return win_.is_win_b(); }
     inline WinCompletion completion() const { return win_.completion(); }
     inline void flush_win() const { win_.flush_win(); }
@@ -18,11 +20,11 @@ public:
     inline void block_on_expr(exprid expr) const { win_.block_on_expr(expr); }
 #endif
     inline void eexpr_outstanding_gets() const
-    { win_.eexpr_outstanding_gets(); }
+    { win_.eexpr_outstanding_gets( idx_ ); }
     inline void eexpr_outstanding_put( const T val ) const
-    { win_.eexpr_outstanding_put( val ); }
+    { win_.eexpr_outstanding_put( idx_, val ); }
     inline void expr_ignore_last_get() const
-    { win_.expr_ignore_last_get(); }
+    { win_.expr_ignore_last_get( idx_ ); }
 #ifdef RMACXX_DEBUG_EXPRS
     inline void debug()const{
         std::cout<<"@"<<(u_long)&win_;
@@ -30,6 +32,7 @@ public:
 #endif
 private:
     WIN const& win_;
+    int idx_;
 };
 
 template <typename T, class V>
@@ -166,11 +169,9 @@ public:
     void operator >>( EExpr<T,W> const& win )
     {
         bool is_placed = true;
-        printf("AAAA\n");
 
         // ignore previous get
         win.expr_ignore_last_get();
-        printf("BBBB\n");
 
         // post remaining gets for current
         // object

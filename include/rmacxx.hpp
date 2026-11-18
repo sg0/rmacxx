@@ -8,6 +8,10 @@
 #include <algorithm>
 #include <string>
 #include <cstring>
+// concepts.hpp is included inside namespace rmacxx; make sure the standard
+// headers it pulls in are already included at global scope
+#include <concepts>
+#include <ranges>
 
 // TODO: Remove feature guard default once development is complete
 #ifndef RMACXX_USE_FUTURES
@@ -22,11 +26,10 @@
 #include <future>
 #endif
 
+#include <mutex>
 #ifdef RMACXX_USE_SPINLOCK
 #include <atomic>
-std::atomic_flag locked = ATOMIC_FLAG_INIT;
-#else
-#include <mutex>
+inline std::atomic_flag locked = ATOMIC_FLAG_INIT;
 #endif
 
 #include <functional>
@@ -36,7 +39,40 @@ std::atomic_flag locked = ATOMIC_FLAG_INIT;
 #include <array>
 #include <new>
 
-#include "mpi.h"
+#include <cstdio>
+#include <cstdlib>
+#include <cstdint>
+
+// NVSHMEM backend
+// ---------------
+// Window memory lives on the NVSHMEM symmetric heap (GPU memory) and all
+// one-sided communication is performed with NVSHMEM, either from kernels
+// launched by the host API or directly from user kernels through
+// Window::device_view() (device-initiated communication).
+//
+// Translation units including this header must be compiled as CUDA
+// (nvcc -x cu, relocatable device code: -rdc=true) and linked against
+// NVSHMEM (nvshmem_host + nvshmem_device, or libnvshmem).
+//
+// MPI is only used to launch/bootstrap NVSHMEM (mpiexec). Define
+// RMACXX_USE_MPI_BOOTSTRAP=0 to use NVSHMEM's own launcher instead.
+#ifndef RMACXX_USE_MPI_BOOTSTRAP
+#define RMACXX_USE_MPI_BOOTSTRAP 1
+#endif
+
+#include <cuda_runtime.h>
+#include <nvshmem.h>
+#include <nvshmemx.h>
+
+#if RMACXX_USE_MPI_BOOTSTRAP
+#include <mpi.h>
+#endif
+
+// storage class for process-wide singletons (the CPU emulator used for
+// testing runs one PE per thread and defines this as thread_local)
+#ifndef RMACXX_TLS
+#define RMACXX_TLS
+#endif
 
 #include "util.hpp"
 
@@ -134,7 +170,7 @@ template <typename T> class Handles
 public:
     static Handles& instance()
     {
-        static Handles s_instance;
+        static RMACXX_TLS Handles s_instance;
         return s_instance;
     }
 
@@ -232,7 +268,7 @@ template <typename T> class FuturesManager {
 public:
     static FuturesManager& instance()
     {
-        static FuturesManager s_instance;
+        static RMACXX_TLS FuturesManager s_instance;
         return s_instance;
     }
     inline exprid new_expr(std::future<void> future){
@@ -247,6 +283,7 @@ public:
            expression_liveness_[expr] = false;
         }
     }
+    inline bool is_alive(exprid id) const { return expression_liveness_[id]; }
     inline void remove_expr(exprid id){
         expression_liveness_[id] = false;// Mark that it has been done already
 //        expression_completion_futures_[id].~future();// Delete the future
@@ -332,8 +369,9 @@ struct RMACXX_Subarray_t {};
 
 #include "functions.hpp"
 #include "concepts.hpp"
+#include "rmacxx-nvshmem.hpp"
 #include "rmacxx-local-types.hpp"
-#include "rmacxx-mpi-rma.hpp"
+#include "rmacxx-device.hpp"
 #include "rmacxx-local-view.hpp"
 #include "rmacxx-global-view.hpp"
 #include "rmacxx-expr-elem.hpp"

@@ -1,56 +1,60 @@
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wc++17-extensions"
 #pragma once
 #ifndef UTIL_HPP
 #define UTIL_HPP
 
 #include <bitset>
+#include <cstdint>
+
+// NOTE: this header is included at global scope by rmacxx.hpp (outside
+// namespace rmacxx), exactly as before. It no longer depends on MPI.
+
 typedef std::bitset<8> byte;
 
-template<typename T> MPI_Datatype TypeMap();
-template<> inline MPI_Datatype TypeMap<byte>() { return MPI_UNSIGNED_CHAR; }
-template<> inline MPI_Datatype TypeMap<char>() { return MPI_CHAR; }
-template<> inline MPI_Datatype TypeMap<short int>() { return MPI_SHORT; }
-template<> inline MPI_Datatype TypeMap<int>() { return MPI_INT; }
-template<> inline MPI_Datatype TypeMap<long>() { return MPI_LONG; }
-template<> inline MPI_Datatype TypeMap<long long>() { return MPI_LONG_LONG_INT; }
-template<> inline MPI_Datatype TypeMap<unsigned short>() { return MPI_UNSIGNED_SHORT; }
-template<> inline MPI_Datatype TypeMap<unsigned int>() { return MPI_UNSIGNED; }
-template<> inline MPI_Datatype TypeMap<unsigned long>() { return MPI_UNSIGNED_LONG; }
-template<> inline MPI_Datatype TypeMap<unsigned long long>() { return MPI_UNSIGNED_LONG_LONG; }
-/* 
-template<> inline MPI_Datatype TypeMap<int8_t>() { return MPI_INT8_T; }
-template<> inline MPI_Datatype TypeMap<int16_t>() { return MPI_INT16_T; }
-template<> inline MPI_Datatype TypeMap<int32_t>() { return MPI_INT32_T; }
-template<> inline MPI_Datatype TypeMap<int64_t>() { return MPI_INT64_T; }
-template<> inline MPI_Datatype TypeMap<uint8_t>() { return MPI_INT8_T; }
-template<> inline MPI_Datatype TypeMap<uint16_t>() { return MPI_UINT16_T; }
-template<> inline MPI_Datatype TypeMap<uint32_t>() { return MPI_UINT32_T; }
-template<> inline MPI_Datatype TypeMap<uint64_t>() { return MPI_UINT64_T; }
-*/
-template<> inline MPI_Datatype TypeMap<float>() { return MPI_FLOAT; }
-template<> inline MPI_Datatype TypeMap<double>() { return MPI_DOUBLE; }
-template<> inline MPI_Datatype TypeMap<long double>() { return MPI_LONG_DOUBLE; }
+// Reduction / accumulate operators
+// --------------------------------
+// These used to wrap MPI_Op handles. With the NVSHMEM backend, accumulate
+// style operations are implemented element-wise on the GPU with NVSHMEM
+// atomics (native fetch-add/swap where available, a compare-and-swap loop
+// otherwise), so an operator is just a tag.
+//
+// MAXLOC/MINLOC are not supported (they require pair types).
+enum class OpKind : int
+{
+    NONE = 0,   // "no accumulate requested" (was MPI_OP_NULL)
+    SUM,
+    PROD,
+    MAX,
+    MIN,
+    REPLACE,
+    NO_OP,
+    LAND,
+    LOR,
+    LXOR,
+    BAND,
+    BOR,
+    BXOR
+};
 
 struct Op
 {
-    MPI_Op op;
-    explicit Op( MPI_Op mpiop = MPI_OP_NULL ) : op( mpiop ) {}
+    OpKind op;
+    constexpr explicit Op( OpKind k = OpKind::NONE ) : op( k ) {}
+    constexpr bool operator==( Op const& o ) const { return op == o.op; }
+    constexpr bool operator!=( Op const& o ) const { return op != o.op; }
 };
 
-const Op MAX        = static_cast<Op>( MPI_MAX );
-const Op MIN        = static_cast<Op>( MPI_MIN );
-const Op MAXLOC     = static_cast<Op>( MPI_MAXLOC );
-const Op MINLOC     = static_cast<Op>( MPI_MINLOC );
-const Op PROD       = static_cast<Op>( MPI_PROD );
-const Op SUM        = static_cast<Op>( MPI_SUM );
-const Op REPLACE    = static_cast<Op>( MPI_REPLACE );
-const Op LAND       = static_cast<Op>( MPI_LAND );
-const Op LOR        = static_cast<Op>( MPI_LOR );
-const Op LXOR       = static_cast<Op>( MPI_LXOR );
-const Op BAND       = static_cast<Op>( MPI_BAND );
-const Op BOR        = static_cast<Op>( MPI_BOR );
-const Op BXOR       = static_cast<Op>( MPI_BXOR );
+constexpr Op MAX        = Op( OpKind::MAX );
+constexpr Op MIN        = Op( OpKind::MIN );
+constexpr Op PROD       = Op( OpKind::PROD );
+constexpr Op SUM        = Op( OpKind::SUM );
+constexpr Op REPLACE    = Op( OpKind::REPLACE );
+constexpr Op NO_OP      = Op( OpKind::NO_OP );
+constexpr Op LAND       = Op( OpKind::LAND );
+constexpr Op LOR        = Op( OpKind::LOR );
+constexpr Op LXOR       = Op( OpKind::LXOR );
+constexpr Op BAND       = Op( OpKind::BAND );
+constexpr Op BOR        = Op( OpKind::BOR );
+constexpr Op BXOR       = Op( OpKind::BXOR );
 
 // Window attributes
 // -----------------
@@ -122,25 +126,25 @@ typedef enum
 #endif
 
 // element-wise arithmetic operations
-template <typename T> struct Add { 
+template <typename T> struct Add {
 #ifdef RMACXX_DEBUG_EXPRS
     static const char S='+';
 #endif
     static T apply( T l, T r ) { return ( l+r ); }
 };
-template <typename T> struct Sub { 
+template <typename T> struct Sub {
 #ifdef RMACXX_DEBUG_EXPRS
     static const char S='-';
 #endif
     static T apply( T l, T r ) { return ( l-r ); }
 };
-template <typename T> struct Mul { 
+template <typename T> struct Mul {
 #ifdef RMACXX_DEBUG_EXPRS
     static const char S='*';
 #endif
     static T apply( T l, T r ) { return ( l*r ); }
 };
-template <typename T> struct Div { 
+template <typename T> struct Div {
 #ifdef RMACXX_DEBUG_EXPRS
     static const char S='/';
 #endif
@@ -148,5 +152,3 @@ template <typename T> struct Div {
 };
 
 #endif
-
-#pragma clang diagnostic pop
